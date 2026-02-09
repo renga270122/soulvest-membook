@@ -558,6 +558,27 @@ with tab2:
 # Footer
 st.markdown("---")
 st.markdown(
-    "<p style='text-align: center; color: #636e72;'>Made with ❤️ by <a href='https://soulvest.ai' style='color: #6c5ce7; text-decoration: none;'>SoulVest.ai</a> | Free for Valentine's Week</p>",
+    "<p style='text-align: center; color: #636e72;'>Made with ❤️ by <a href='https://soulvest.ai' style='color: #6c5ce7; text-decoration: none;'>SoulVest.ai</a> | Free for Valentine's Week<br>"
+    "&copy; 2026 SoulVest Memory Book. All rights reserved." 
+    "</p>",
     unsafe_allow_html=True
 )
+
+# Feedback Form
+st.markdown("---")
+st.markdown("## 💬 We value your feedback!")
+st.markdown("<span style='color:#b91372;'>Share your suggestions, ideas, or report any issues below. Help us make SoulVest Memory Book even better!</span>", unsafe_allow_html=True)
+with st.form("feedback_form"):
+    feedback_name = st.text_input("Your Name (optional)")
+    feedback_email = st.text_input("Your Email (optional)")
+    feedback_message = st.text_area("Your Feedback", placeholder="Share your thoughts, suggestions, or report any issues...")
+    submitted = st.form_submit_button("Submit Feedback")
+    if submitted and feedback_message:
+        try:
+            with open("feedback.txt", "a", encoding="utf-8") as f:
+                f.write(f"Name: {feedback_name}\nEmail: {feedback_email}\nMessage: {feedback_message}\n---\n")
+            st.success("Thank you for your feedback! 💖")
+        except Exception as e:
+            st.error(f"Error saving feedback: {str(e)}")
+    elif submitted:
+        st.warning("Please enter your feedback before submitting.")
