@@ -10,23 +10,6 @@ st.set_page_config(
     page_icon="📖",
     layout="wide"
 )
-
-
-import streamlit as st
-from anthropic import Anthropic
-from fpdf import FPDF
-from datetime import datetime
-import base64
-
-# Page config
-st.set_page_config(
-    page_title="SoulVest Memory Book 📖",
-    page_icon="📖",
-    layout="wide"
-)
-
-
-
 # --- Session State Initialization ---
 if 'memories' not in st.session_state:
     st.session_state.memories = {}
