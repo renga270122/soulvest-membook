@@ -564,6 +564,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+    # Privacy Notice
+    st.markdown("---")
+    st.markdown("### 🔒 Privacy & Data Security")
+    st.markdown("""
+    <span style='color:#b91372;'>Your privacy matters to us. All memories, stories, and feedback you share in SoulVest Memory Book are stored securely and are never shared with third parties. Feedback is saved locally and used only to improve the app. No personal or sensitive information is sold, published, or used for marketing. You are always in control of your data.</span>
+    """, unsafe_allow_html=True)
+    st.markdown("If you have questions or concerns about your privacy, please contact us at <a href='mailto:soulvest1111@gmail.com'>soulvest1111@gmail.com</a>.", unsafe_allow_html=True)
+
 # Feedback Form
 st.markdown("---")
 st.markdown("## 💬 We value your feedback!")
