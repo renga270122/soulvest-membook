@@ -1,8 +1,8 @@
 import streamlit as st
-from anthropic import Anthropic
 from fpdf import FPDF
 from datetime import datetime
 import base64
+import google.generativeai as genai
 
 # Page config
 st.set_page_config(
@@ -400,36 +400,24 @@ with tab1:
     
     st.markdown("---")
     
+
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         if st.button("✨ Generate Our Memory Book", use_container_width=True):
-            # Validation
             required_fields = [
-                person1_name, person2_name, how_met_story, 
+                person1_name, person2_name, how_met_story,
                 first_date_story, favorite_memory
             ]
-        
             if not all(required_fields):
                 st.error("⚠️ Please fill in at least: Names, How We Met, First Date, and One Special Memory")
             else:
                 with st.spinner("Creating your beautiful memory book... 📖"):
                     try:
-                        # Initialize Claude
-                        client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-
-                        # Create comprehensive prompt
-                        prompt = f"""You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
-
-
-uploaded_bg = st.file_uploader(
-    "Upload a romantic background image (JPG/PNG, optional)",
-    type=["jpg", "jpeg", "png"],
-    help="Personalize your memory book with your own photo as the background!",
-    key="main_bg_upload"
-)
-st.info("You can upload a romantic background image here to personalize your memory book. JPG, JPEG, PNG formats supported.")
-col1, col2, col3 = st.columns([1,2,1])
+                        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                        model = genai.GenerativeModel("gemini-pro")
+                        prompt = f"""
+You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
 
 HOW THEY MET:
 Location: {how_met_where}
@@ -469,32 +457,20 @@ Chapter 3: Moments That Define Us
 Chapter 4: Growing Stronger Together
 Chapter 5: The Future We're Building
 
-Write only the story, nothing else."""
-
-                        # Call Claude API
-                        message = client.messages.create(
-                            model="claude-sonnet-4-20250514",
-                            max_tokens=2000,
-                            messages=[
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-
-                        story = message.content[0].text
-
-                        # Store in session state
+Write only the story, nothing else.
+"""
+                        response = model.generate_content(prompt)
+                        story = response.text
                         st.session_state.story = story
                         st.session_state.story_generated = True
                         st.session_state.couple_names = f"{person1_name} & {person2_name}"
                         st.session_state.start_date = relationship_start
-
                         st.success("✨ Your memory book is ready!")
                         st.balloons()
-                        st.info("Your story was crafted with the help of AI, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
-
+                        st.info("Your story was crafted with the help of Google Gemini AI, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        st.info("💡 Make sure your API key is set correctly")
+                        st.info("💡 Make sure your Gemini API key is set correctly.")
 
 with tab2:
     if st.session_state.story_generated:
