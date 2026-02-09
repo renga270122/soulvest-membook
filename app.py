@@ -16,11 +16,25 @@ if 'memories' not in st.session_state:
 if 'story_generated' not in st.session_state:
     st.session_state.story_generated = False
 
+
 # --- Image Upload for Background ---
 uploaded_bg = None
 
 bg_css = """
 <style>
+        .sidebar-logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .sidebar-logo img {
+            width: 120px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(255,0,100,0.3), 0 2px 8px rgba(0,0,0,0.15);
+            border: 2px solid #fff;
+            animation: heartbeat 1.5s infinite;
+        }
     body {
         background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%) !important;
     }
@@ -108,8 +122,16 @@ bg_css = """
         width: 120px;
         height: auto;
         margin-right: 12px;
-        border-radius: 16px;
-        box-shadow: 0 2px 8px rgba(255, 182, 193, 0.18);
+        border-radius: 18px;
+        box-shadow: 0 6px 24px 0 rgba(255, 106, 136, 0.35), 0 2px 8px rgba(255, 182, 193, 0.18);
+        border: 3px solid #ff6a88;
+        transition: transform 0.3s;
+        animation: logoPulse 2s infinite;
+    }
+    @keyframes logoPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.08); box-shadow: 0 12px 32px 0 rgba(255, 106, 136, 0.45); }
+        100% { transform: scale(1); }
     }
     .sidebar-title {
         font-size: 24px;
@@ -222,7 +244,9 @@ st.markdown("---")
 # Sidebar - About
     # File uploader already defined above; remove duplicate
 with st.sidebar:
+    st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
     st.image("soulvest_logo.png", width=120)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<span class='sidebar-title'>SoulVest Memory Book</span>", unsafe_allow_html=True)
     # File uploader removed from sidebar; only appears in main content area
     st.markdown("---")
