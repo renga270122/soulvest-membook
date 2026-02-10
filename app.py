@@ -315,24 +315,21 @@ with tab1:
         person1_name = st.text_input("Your Name", key="p1", label_visibility="visible")
     with col2:
         person2_name = st.text_input("Partner's Name", key="p2", label_visibility="visible")
-    how_met = st.text_area(
+    how_met = st.text_input(
         "How did you meet?",
         placeholder="E.g. At a coffee shop...",
-        height=50,
         label_visibility="visible",
         key="how_met_area"
     )
-    favorite_memory = st.text_area(
+    favorite_memory = st.text_input(
         "Favorite memory together:",
         placeholder="E.g. Our first trip...",
-        height=50,
         label_visibility="visible",
         key="fav_mem_area"
     )
-    future_dream = st.text_area(
+    future_dream = st.text_input(
         "A dream for your future:",
         placeholder="E.g. Travel the world together...",
-        height=50,
         label_visibility="visible",
         key="future_dream_area"
     )
