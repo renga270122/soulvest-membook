@@ -312,46 +312,34 @@ with tab1:
     )
     col1, col2 = st.columns(2)
     with col1:
-        person1_name = st.text_input("Your Name", key="p1", on_change=None, help=None, label_visibility="visible", placeholder=None, disabled=False)
+        person1_name = st.text_input("Your Name", key="p1", label_visibility="visible")
     with col2:
-        person2_name = st.text_input("Partner's Name", key="p2", on_change=None, help=None, label_visibility="visible", placeholder=None, disabled=False)
+        person2_name = st.text_input("Partner's Name", key="p2", label_visibility="visible")
     how_met = st.text_area(
         "How did you meet?",
         placeholder="E.g. At a coffee shop...",
         height=50,
-        on_change=None,
-        help=None,
         label_visibility="visible",
-        disabled=False,
         key="how_met_area"
     )
     favorite_memory = st.text_area(
         "Favorite memory together:",
         placeholder="E.g. Our first trip...",
         height=50,
-        on_change=None,
-        help=None,
         label_visibility="visible",
-        disabled=False,
         key="fav_mem_area"
     )
     future_dream = st.text_area(
         "A dream for your future:",
         placeholder="E.g. Travel the world together...",
         height=50,
-        on_change=None,
-        help=None,
         label_visibility="visible",
-        disabled=False,
         key="future_dream_area"
     )
     why_together = st.text_input(
         "Why are you perfect together?",
         placeholder="Because we...",
-        on_change=None,
-        help=None,
         label_visibility="visible",
-        disabled=False,
         key="why_together_input"
     )
 
