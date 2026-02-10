@@ -2,7 +2,7 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
 import base64
-import google.generativeai as genai
+import openai
 
 # Page config
 st.set_page_config(
@@ -350,8 +350,7 @@ with tab1:
             else:
                 with st.spinner("Creating your beautiful memory book... 📖"):
                     try:
-                        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                        model = genai.GenerativeModel("gemini-1.0-pro")
+                        openai.api_key = st.secrets["OPENAI_API_KEY"]
                         prompt = f"""
 You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
 
@@ -372,17 +371,23 @@ Format each chapter with a title, then the narrative.
 
 Write only the story, nothing else.
 """
-                        response = model.generate_content(prompt)
-                        story = response.text
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "system", "content": "You are a helpful assistant."},
+                                      {"role": "user", "content": prompt}],
+                            max_tokens=900,
+                            temperature=0.7
+                        )
+                        story = response.choices[0].message.content
                         st.session_state.story = story
                         st.session_state.story_generated = True
                         st.session_state.couple_names = f"{person1_name} & {person2_name}"
                         st.success("✨ Your memory book is ready!")
                         st.balloons()
-                        st.info("Your story was crafted with the help of Google Gemini AI, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
+                        st.info("Your story was crafted with the help of OpenAI GPT-3.5 Turbo, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        st.info("💡 Make sure your Gemini API key is set correctly.")
+                        st.info("💡 Make sure your OpenAI API key is set correctly in .streamlit/secrets.toml as OPENAI_API_KEY.")
 
 with tab2:
     if st.session_state.story_generated:
