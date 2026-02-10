@@ -192,7 +192,10 @@ if uploaded_bg is not None:
         background-attachment: fixed !important;
     }}
     .main {{
-        background: rgba(255,255,255,0.85);
+        background: rgba(255,255,255,0.97); /* Increased opacity for better readability */
+        box-shadow: 0 0 32px 8px rgba(0,0,0,0.10);
+        border-radius: 18px;
+        padding: 16px 0;
     }}
     </style>
     """
@@ -243,9 +246,11 @@ st.markdown("---")
 
 # Sidebar - About
     # File uploader already defined above; remove duplicate
+import os
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
-    st.image("soulvest_logo.png", width=120)
+    logo_path = os.path.join(os.path.dirname(__file__), "soulvest_logo.png")
+    st.image(logo_path, width=120)
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<span class='sidebar-title'>SoulVest Memory Book</span>", unsafe_allow_html=True)
     # File uploader removed from sidebar; only appears in main content area
@@ -300,124 +305,51 @@ tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 with tab1:
     st.markdown("## Tell Us Your Story")
     uploaded_bg = st.file_uploader(
-        "Upload your personal photo with your loved one (JPG/PNG, optional)",
+        "Upload your photo (optional)",
         type=["jpg", "jpeg", "png"],
-        help="Personalize your memory book with a photo of you and your loved one!",
+        help="Personalize your memory book with a photo!",
         key="main_bg_upload"
     )
-    st.info("Upload a photo with your loved one to make your memory book more special. JPG, JPEG, PNG formats supported.")
-    # Basic Info
-    st.markdown("### 💑 About You and Your Beloved")
     col1, col2 = st.columns(2)
-    
     with col1:
-        person1_name = st.text_input("Your Name:", key="p1")
-        
+        person1_name = st.text_input("Your Name", key="p1", label_visibility="visible")
     with col2:
-        person2_name = st.text_input("Partner's Name:", key="p2")
-    
-    relationship_start = st.date_input(
-        "When did your relationship start?",
-        value=None,
-        max_value=datetime.now()
+        person2_name = st.text_input("Partner's Name", key="p2", label_visibility="visible")
+    how_met = st.text_area(
+        "How did you meet?",
+        placeholder="E.g. At a coffee shop...",
+        height=50,
+        label_visibility="visible",
+        key="how_met_area"
     )
-    
-    st.markdown("---")
-    
-    # Chapter 1: How We Met
-    st.markdown("### 🌹 Chapter 1: When Paths First Crossed")
-    with st.expander("💌 Share your magical first meeting", expanded=True):
-        how_met_where = st.text_input("Where did you meet?", placeholder="Coffee shop, college, online...")
-        how_met_story = st.text_area(
-            "Tell us the story:",
-            placeholder="It was a rainy Tuesday afternoon...",
-            height=120
-        )
-        first_impression = st.text_input(
-            "First impression of each other?",
-            placeholder="I thought they were..."
-        )
-    
-    st.markdown("---")
-    
-    # Chapter 2: First Date
-    st.markdown("### 🥂 Chapter 2: The First Date That Sparked Forever")
-    with st.expander("💌 Relive your first date"):
-        first_date_where = st.text_input("Where was your first date?")
-        first_date_story = st.text_area(
-            "What happened?",
-            placeholder="We went to...",
-            height=120
-        )
-        first_date_feeling = st.text_input(
-            "How did it feel?",
-            placeholder="I felt nervous but excited..."
-        )
-    
-    st.markdown("---")
-    
-    # Chapter 3: Special Moments
-    st.markdown("### ✨ Chapter 3: Cherished Moments & Milestones")
-    with st.expander("💌 Recall your most beautiful memories"):
-        favorite_memory = st.text_area(
-            "Most cherished memory together:",
-            placeholder="That time we...",
-            height=120
-        )
-        funniest_moment = st.text_area(
-            "Funniest moment:",
-            placeholder="We still laugh about...",
-            height=120
-        )
-        milestone_moment = st.text_area(
-            "A milestone moment:",
-            placeholder="When we moved in together, got engaged, traveled together...",
-            height=120
-        )
-    
-    st.markdown("---")
-    
-    # Chapter 4: Challenges
-    st.markdown("### 💪 Chapter 4: Weathering Storms, Growing Stronger")
-    with st.expander("💌 Share how love helped you overcome challenges (optional)"):
-        challenge_faced = st.text_area(
-            "A challenge you overcame together:",
-            placeholder="Long distance, tough times, disagreements...",
-            height=120
-        )
-        what_learned = st.text_input(
-            "What did you learn?",
-            placeholder="We learned that..."
-        )
-    
-    st.markdown("---")
-    
-    # Chapter 5: Future Dreams
-    st.markdown("### 🌟 Chapter 5: Dreams for Tomorrow, Together")
-    with st.expander("💌 Paint your shared dreams"):
-        future_dreams = st.text_area(
-            "What do you dream about together?",
-            placeholder="We want to travel to..., build a home..., start a family...",
-            height=120
-        )
-        why_together = st.text_input(
-            "In one sentence, why are you perfect together?",
-            placeholder="Because we..."
-        )
-    
-    st.markdown("---")
-    
+    favorite_memory = st.text_area(
+        "Favorite memory together:",
+        placeholder="E.g. Our first trip...",
+        height=50,
+        label_visibility="visible",
+        key="fav_mem_area"
+    )
+    future_dream = st.text_area(
+        "A dream for your future:",
+        placeholder="E.g. Travel the world together...",
+        height=50,
+        label_visibility="visible",
+        key="future_dream_area"
+    )
+    why_together = st.text_input(
+        "Why are you perfect together?",
+        placeholder="Because we...",
+        label_visibility="visible",
+        key="why_together_input"
+    )
 
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         if st.button("✨ Generate Our Memory Book", use_container_width=True):
-            required_fields = [
-                person1_name, person2_name, how_met_story,
-                first_date_story, favorite_memory
-            ]
+            required_fields = [person1_name, person2_name, how_met, favorite_memory]
             if not all(required_fields):
-                st.error("⚠️ Please fill in at least: Names, How We Met, First Date, and One Special Memory")
+                st.error("⚠️ Please fill in at least: Names, How You Met, and Favorite Memory")
             else:
                 with st.spinner("Creating your beautiful memory book... 📖"):
                     try:
@@ -426,43 +358,20 @@ with tab1:
                         prompt = f"""
 You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
 
-HOW THEY MET:
-Location: {how_met_where}
-Story: {how_met_story}
-First impressions: {first_impression}
-
-FIRST DATE:
-Location: {first_date_where}
-What happened: {first_date_story}
-How it felt: {first_date_feeling}
-
-SPECIAL MOMENTS:
+Names: {person1_name} & {person2_name}
+How they met: {how_met}
 Favorite memory: {favorite_memory}
-Funniest moment: {funniest_moment}
-Milestone: {milestone_moment}
+Dream for the future: {future_dream}
+Why they are perfect together: {why_together}
 
-CHALLENGES:
-Challenge faced: {challenge_faced if challenge_faced else 'Not mentioned'}
-What they learned: {what_learned if what_learned else 'Not mentioned'}
-
-DREAMS:
-Future together: {future_dreams}
-Why perfect together: {why_together}
-
-Write this as a beautiful, flowing narrative in 5 chapters. Make it:
+Write this as a beautiful, flowing narrative in 3-4 short chapters. Make it:
 - Personal and authentic (use their actual details)
 - Warm and heartfelt
 - Like a story someone would treasure forever
-- 600-800 words total
+- 400-600 words total
 - Use their names naturally throughout
 
 Format each chapter with a title, then the narrative.
-
-Chapter 1: When Our Eyes First Met
-Chapter 2: The First Date That Changed Everything
-Chapter 3: Moments That Define Us
-Chapter 4: Growing Stronger Together
-Chapter 5: The Future We're Building
 
 Write only the story, nothing else.
 """
@@ -471,7 +380,6 @@ Write only the story, nothing else.
                         st.session_state.story = story
                         st.session_state.story_generated = True
                         st.session_state.couple_names = f"{person1_name} & {person2_name}"
-                        st.session_state.start_date = relationship_start
                         st.success("✨ Your memory book is ready!")
                         st.balloons()
                         st.info("Your story was crafted with the help of Google Gemini AI, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
