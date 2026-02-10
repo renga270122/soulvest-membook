@@ -351,7 +351,7 @@ with tab1:
                 with st.spinner("Creating your beautiful memory book... 📖"):
                     try:
                         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                        model = genai.GenerativeModel("gemini-pro")
+                        model = genai.GenerativeModel("gemini-1.0-pro")
                         prompt = f"""
 You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
 
