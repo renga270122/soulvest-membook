@@ -316,14 +316,10 @@ with st.sidebar:
         "Did you know? The Hawaiian practice of Ho'oponopono uses four simple phrases—I'm sorry. Please forgive me. Thank you. I love you.—to heal and strengthen relationships. Try writing or saying these words to your partner for a powerful, loving impact!"
     ]
     import random
-    import time
     if 'tip_index' not in st.session_state:
-        st.session_state.tip_index = 0
-        st.session_state.tip_last_update = time.time()
-    # Rotate tip every 10 seconds
-    if time.time() - st.session_state.tip_last_update > 10:
+        st.session_state.tip_index = random.randint(0, len(pro_tips)-1)
+    if st.button('Show me another tip', key='next_tip'):
         st.session_state.tip_index = (st.session_state.tip_index + 1) % len(pro_tips)
-        st.session_state.tip_last_update = time.time()
     st.info(pro_tips[st.session_state.tip_index])
     st.markdown("### 🎁 Place a Gift Order (External)")
     st.markdown("<span style='color:#b91372;font-size:16px;'>Surprise your loved one with a gift! Choose from these famous sites (not paid, just for your convenience):</span>", unsafe_allow_html=True)
@@ -343,7 +339,7 @@ tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 with tab1:
     # Ho'oponopono-inspired final touch
     st.markdown("---")
-    st.markdown("### 🌺 Final Touch: Express from the Heart")
+    st.markdown("### 🌺 Express from the Heart")
     st.markdown("Sometimes, a few simple words can heal and bring you closer. Use this space to write a heartfelt message to your partner, inspired by the spirit of Ho'oponopono:")
     st.caption("E.g. Hi dear, I am sorry if I hurt you unintentionally. Please forgive me. Thank you for being there, and I love you.")
     hooponopono_message = st.text_area("Your heartfelt message (optional)", key="hooponopono", height=60)
@@ -412,9 +408,7 @@ with tab1:
         ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
         ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
         ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
-        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?"),
-        ("Is there something you wish to be forgiven for, or something you want to forgive your partner for? How can forgiveness help your relationship heal?", "E.g. I want to say sorry for the times I hurt you...", "forgiveness", "Tip: Forgiveness is a gift you give to yourself and your partner. Be honest and gentle."),
-        ("What steps can you both take to resolve conflicts and create more harmony in your relationship?", "E.g. We can listen more, judge less, and support each other...", "harmony", "Tip: Think about small changes or new habits that could help you both feel more connected and at peace.")
+        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
     ]
 
     answers = {}
