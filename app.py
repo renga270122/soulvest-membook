@@ -218,6 +218,13 @@ else:
     .stTextArea [data-baseweb="textarea"] + div {
         display: none !important;
     }
+    .stTextArea textarea {
+        min-height: 32px !important;
+        max-height: 40px !important;
+        font-size: 16px !important;
+        padding: 6px 10px !important;
+        border-radius: 8px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -419,7 +426,14 @@ with tab1:
             audio_file = tts_audio(q)
             if audio_file:
                 st.audio(audio_file, format='audio/mp3')
-        answers[key] = st.text_area("", placeholder=ph, key=f"ans_{key}", height=60, label_visibility="collapsed", help=None)
+        answers[key] = st.text_area(
+            label=" ",
+            placeholder=ph,
+            key=f"ans_{key}",
+            height=32,
+            label_visibility="collapsed",
+            help=" "
+        )
 
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
