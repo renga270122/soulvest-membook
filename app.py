@@ -2,7 +2,6 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
 import base64
-import openai
 
 # Page config
 st.set_page_config(
@@ -10,11 +9,14 @@ st.set_page_config(
     page_icon="📖",
     layout="wide"
 )
+
 # --- Session State Initialization ---
 if 'memories' not in st.session_state:
     st.session_state.memories = {}
 if 'story_generated' not in st.session_state:
     st.session_state.story_generated = False
+if 'start_date' not in st.session_state:
+    st.session_state.start_date = None
 
 
 # --- Image Upload for Background ---
@@ -200,8 +202,24 @@ if uploaded_bg is not None:
     </style>
     """
     st.markdown(custom_bg, unsafe_allow_html=True)
+
+    # Hide Ctrl+Enter hint in text areas
+    st.markdown("""
+    <style>
+    .stTextArea [data-baseweb="textarea"] + div {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 else:
     st.markdown(bg_css, unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .stTextArea [data-baseweb="textarea"] + div {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 # Move SoulVest Memory Book title to top, then welcome banner
@@ -310,84 +328,86 @@ with tab1:
         help="Personalize your memory book with a photo!",
         key="main_bg_upload"
     )
+
+
+    import tempfile
+    import asyncio
+    import edge_tts
+
+    def tts_audio(text):
+        try:
+            async def _gen():
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tts_fp:
+                    communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
+                    await communicate.save(tts_fp.name)
+                    return tts_fp.name
+            return asyncio.run(_gen())
+        except Exception:
+            return None
+
     col1, col2 = st.columns(2)
     with col1:
-        person1_name = st.text_input("Your Name", key="p1", label_visibility="visible")
+        st.write("Your Name")
+        if st.button("🔊", key="tts_p1"):
+            audio_file = tts_audio("Your Name")
+            if audio_file:
+                st.audio(audio_file, format='audio/mp3')
+        person1_name = st.text_input("", key="p1", label_visibility="collapsed")
     with col2:
-        person2_name = st.text_input("Partner's Name", key="p2", label_visibility="visible")
-    how_met = st.text_input(
-        "How did you meet?",
-        placeholder="E.g. At a coffee shop...",
-        label_visibility="visible",
-        key="how_met_area"
-    )
-    favorite_memory = st.text_input(
-        "Favorite memory together:",
-        placeholder="E.g. Our first trip...",
-        label_visibility="visible",
-        key="fav_mem_area"
-    )
-    future_dream = st.text_input(
-        "A dream for your future:",
-        placeholder="E.g. Travel the world together...",
-        label_visibility="visible",
-        key="future_dream_area"
-    )
-    why_together = st.text_input(
-        "Why are you perfect together?",
-        placeholder="Because we...",
-        label_visibility="visible",
-        key="why_together_input"
-    )
+        st.write("Partner's Name")
+        if st.button("🔊", key="tts_p2"):
+            audio_file = tts_audio("Partner's Name")
+            if audio_file:
+                st.audio(audio_file, format='audio/mp3')
+        person2_name = st.text_input("", key="p2", label_visibility="collapsed")
+
+
+    # Redesigned, engaging questions
+    questions = [
+        ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
+        ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
+        ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
+        ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
+        ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?") ,
+        ("What is your favorite thing about your relationship?", "E.g. We can be silly together and always support each other...", "fav_thing", "Tip: Think about what makes your bond special or different from others."),
+        ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
+        ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
+        ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
+        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
+    ]
+
+    answers = {}
+    for idx, (q, ph, key, tip) in enumerate(questions):
+        st.write(f"{idx+1}. {q}")
+        st.caption(tip)
+        if st.button("🔊", key=f"tts_{key}"):
+            audio_file = tts_audio(q)
+            if audio_file:
+                st.audio(audio_file, format='audio/mp3')
+        answers[key] = st.text_area("", placeholder=ph, key=f"ans_{key}", height=60, label_visibility="collapsed", help=None)
 
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         if st.button("✨ Generate Our Memory Book", use_container_width=True):
-            required_fields = [person1_name, person2_name, how_met, favorite_memory]
+            required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
             if not all(required_fields):
-                st.error("⚠️ Please fill in at least: Names, How You Met, and Favorite Memory")
+                st.error("⚠️ Please fill in at least: Names and the first two questions.")
             else:
                 with st.spinner("Creating your beautiful memory book... 📖"):
-                    try:
-                        openai.api_key = st.secrets["OPENAI_API_KEY"]
-                        prompt = f"""
-You are creating a beautiful, heartfelt memory book for a couple. Write it as a cohesive narrative story, not as answers to questions.
-
-Names: {person1_name} & {person2_name}
-How they met: {how_met}
-Favorite memory: {favorite_memory}
-Dream for the future: {future_dream}
-Why they are perfect together: {why_together}
-
-Write this as a beautiful, flowing narrative in 3-4 short chapters. Make it:
-- Personal and authentic (use their actual details)
-- Warm and heartfelt
-- Like a story someone would treasure forever
-- 400-600 words total
-- Use their names naturally throughout
-
-Format each chapter with a title, then the narrative.
-
-Write only the story, nothing else.
-"""
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[{"role": "system", "content": "You are a helpful assistant."},
-                                      {"role": "user", "content": prompt}],
-                            max_tokens=900,
-                            temperature=0.7
-                        )
-                        story = response.choices[0].message.content
-                        st.session_state.story = story
-                        st.session_state.story_generated = True
-                        st.session_state.couple_names = f"{person1_name} & {person2_name}"
-                        st.success("✨ Your memory book is ready!")
-                        st.balloons()
-                        st.info("Your story was crafted with the help of OpenAI GPT-3.5 Turbo, blending your memories into a unique keepsake. Go to the 'View Your Story' tab to see it and share the love!")
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-                        st.info("💡 Make sure your OpenAI API key is set correctly in .streamlit/secrets.toml as OPENAI_API_KEY.")
+                    # Build story from all answers
+                    story = f"""
+{person1_name} & {person2_name}'s Memory Book\n\n"""
+                    for idx, (q, ph, key, tip) in enumerate(questions):
+                        ans = answers.get(key, '').strip()
+                        if ans:
+                            story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
+                    st.session_state.story = story
+                    st.session_state.story_generated = True
+                    st.session_state.couple_names = f"{person1_name} & {person2_name}"
+                    st.success("✨ Your memory book is ready!")
+                    st.balloons()
+                    st.info("Your story was crafted using your own beautiful memories and words. Go to the 'View Your Story' tab to see it and share the love!")
 
 with tab2:
     if st.session_state.story_generated:
@@ -402,36 +422,93 @@ with tab2:
         # Add a romantic quote above the story
         st.markdown("<div style='text-align:center; margin: 0 0 18px 0;'><span style='font-size:18px; color:#b91372; font-family:Georgia,serif; font-style:italic;'>\"Whatever our souls are made of, his and mine are the same.\"<br>– Emily Brontë</span></div>", unsafe_allow_html=True)
 
-        # Display story
-        st.markdown(f'<div class="story-text">{st.session_state.story}</div>', unsafe_allow_html=True)
+        # Display story (only in the main story section, not in the share section)
 
-        # TTS Option
+
+        # PDF Download Option
+        from fpdf import FPDF
+        import io
+
+        def create_pdf(title, story, bg_image=None):
+            pdf = FPDF()
+            pdf.add_page()
+            from PIL import Image
+            import tempfile
+            import os
+            # Use uploaded image or default love theme
+            if bg_image is not None:
+                img = Image.open(bg_image)
+            else:
+                # Use a default love theme image (hearts and roses)
+                default_img_path = os.path.join(os.path.dirname(__file__), "default-love_bg.jpg")
+                img = Image.open(default_img_path)
+            # Resize image to fit A4 (210x297mm, 1pt=0.3528mm, so 595x842pt)
+            img = img.convert('RGB')
+            img = img.resize((595, 842))
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmpfile:
+                img.save(tmpfile, format='JPEG')
+                tmpfile.flush()
+                pdf.image(tmpfile.name, x=0, y=0, w=210, h=297)
+            pdf.set_font("Arial", 'B', 18)
+            pdf.set_text_color(185, 19, 114)
+            pdf.cell(0, 10, title, ln=True, align='C')
+            pdf.ln(10)
+            pdf.set_font("Arial", '', 12)
+            pdf.set_text_color(0, 0, 0)
+            for line in story.split('\n'):
+                line = line.strip()
+                if line:
+                    pdf.multi_cell(0, 8, line)
+                else:
+                    pdf.ln(4)
+            # Add signature at the end
+            pdf.ln(8)
+            pdf.set_font("Arial", 'I', 12)
+            pdf.set_text_color(185, 19, 114)
+            pdf.cell(0, 10, "- Made with SoulVest Memory Book (Love)", ln=True, align='R')
+            return pdf.output(dest='S')
+
+        pdf_bytes = create_pdf(f"{st.session_state.couple_names} - Memory Book", st.session_state.story, uploaded_bg)
+        if isinstance(pdf_bytes, bytearray):
+            pdf_bytes = bytes(pdf_bytes)
+        st.download_button(
+            label="📥 Download Memory Book as PDF",
+            data=pdf_bytes,
+            file_name="memory_book.pdf",
+            mime="application/pdf"
+        )
+
+        # Local TTS Option using edge-tts
         st.markdown("---")
-        st.markdown("### 🔊 Listen to Your Love Story")
-        st.markdown("<span style='color:#b91372;'>Click below to hear your story read aloud (uses your browser's voice).</span>", unsafe_allow_html=True)
-        tts_script = f"""
-        <script>
-        function speakStory() {{
-            var story = `{st.session_state.story}`;
-            var utter = new SpeechSynthesisUtterance(story);
-            utter.rate = 1;
-            utter.pitch = 1.1;
-            utter.lang = 'en-US';
-            window.speechSynthesis.speak(utter);
-        }}
-        </script>
-        <button onclick='speakStory()' style='background:#ff6a88;color:white;padding:12px 32px;border:none;border-radius:12px;font-size:18px;font-family:Georgia,serif;margin-top:8px;'>❤️ Play Story Audio</button>
-        """
-        st.markdown(tts_script, unsafe_allow_html=True)
-
+        st.markdown("### 🔊 Listen to Your Love Story (In-App)")
+        st.markdown("<span style='color:#b91372;'>Click below to play your story audio safely inside the app.</span>", unsafe_allow_html=True)
+        import tempfile
+        import asyncio
+        import edge_tts
+        def story_tts_audio(text):
+            try:
+                async def _gen():
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tts_fp:
+                        communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
+                        await communicate.save(tts_fp.name)
+                        return tts_fp.name
+                return asyncio.run(_gen())
+            except Exception:
+                return None
+        if st.button("▶️ Play Story Audio", key="play_story_tts"):
+            audio_file = story_tts_audio(st.session_state.story)
+            if audio_file:
+                st.audio(audio_file, format='audio/mp3')
+            else:
+                st.info("Text-to-speech is not available. Please ensure edge-tts is installed.")
         st.markdown("---")
 
         # Viral Share Section
         st.markdown("### 💝 Share Your Love Story with the World")
         st.markdown("<span style='color:#b91372;'>Let your love inspire others—share your story on WhatsApp, Facebook, or Instagram! Make this Valentine's Day unforgettable for you and your beloved.</span>", unsafe_allow_html=True)
-        whatsapp_text = f"Our Love Story - {st.session_state.couple_names}%0A%0A{st.session_state.story[:500]}...%0A%0ACreated with SoulVest Memory Book"
+        whatsapp_text = f"Our Love Story - {st.session_state.couple_names} - Made with SoulVest Memory Book. Create yours at https://soulvest.ai"
         whatsapp_url = f"https://wa.me/?text={whatsapp_text}"
-        facebook_url = f"https://www.facebook.com/sharer/sharer.php?u=https://soulvest.ai&quote=Our%20Love%20Story%20by%20SoulVest%20Memory%20Book%3A%20{st.session_state.couple_names}%20%F0%9F%92%97%20{st.session_state.story[:200]}..."
+        facebook_url = f"https://www.facebook.com/sharer/sharer.php?u=https://soulvest.ai&quote=Our%20Love%20Story%20by%20SoulVest%20Memory%20Book%3A%20{st.session_state.couple_names}%20-%20Made%20with%20SoulVest%20Memory%20Book.%20Create%20yours%20at%20https://soulvest.ai"
 
         st.markdown(f'''
             <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;">
@@ -440,12 +517,13 @@ with tab2:
             </div>
         ''', unsafe_allow_html=True)
 
-        st.markdown("<span style='color:#6c5ce7;font-size:16px;'>Want to share on Instagram?</span>", unsafe_allow_html=True)
-        st.markdown("<span style='color:#636e72;'>Copy your story below and paste it as a caption or story in the Instagram app. Add a beautiful photo for extra impact!</span>", unsafe_allow_html=True)
-        if st.button("📋 Copy Story for Instagram"):
-            st.code(st.session_state.story, language=None)
-            st.info("Story copied! Open Instagram and paste as your caption or story text.")
 
+        st.markdown("<span style='color:#6c5ce7;font-size:16px;'>Want to share on Instagram or anywhere else?</span>", unsafe_allow_html=True)
+        st.markdown("<span style='color:#636e72;'>Click below to copy your story text. Paste it as a caption, message, or post in any app!</span>", unsafe_allow_html=True)
+        share_signature = "\n\n— Made with SoulVest Memory Book 💖"
+        share_story = st.session_state.story + share_signature
+        st.text_area("Your Story", share_story, height=200, key="copy_story_area")
+        st.button("📋 Copy Story to Clipboard", on_click=lambda: st.session_state.update({"copy_story_area": share_story}))
         st.markdown("<span style='color:#b91372;font-size:18px;'>Let your love shine bright—spread joy, hope, and romance everywhere you share your story! ✨</span>", unsafe_allow_html=True)
 
         if st.button("🔄 Create New Book"):
