@@ -5,8 +5,8 @@ import base64
 
 # Page config
 st.set_page_config(
-    page_title="SoulVest Memory Book 📖",
-    page_icon="📖",
+    page_title="SoulVest LoveBook 💖",
+    page_icon="💖",
     layout="wide"
 )
 
@@ -222,23 +222,22 @@ else:
     """, unsafe_allow_html=True)
 
 
-# Move SoulVest Memory Book title to top, then welcome banner
-st.title("💖 SoulVest Memory Book")
+st.title("💖 SoulVest LoveBook")
 st.markdown("""
 <div style='text-align:center;margin-top:24px;margin-bottom:8px;'>
     <span style='font-size:32px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
-        Welcome to Your Digital Love Story 💞
+        Welcome to SoulVest LoveBook 💞
     </span><br>
     <span style='font-size:20px; color:#b91372; font-family:Georgia,serif;'>
-        Celebrate your journey, cherish your memories, and let your love shine brighter than ever this Valentine's Day!
+        Sometimes, the best way to share your heart is to write it down. Let your memories, laughter, and dreams come alive on these pages. Discover new things about each other, relive your favorite moments, and enjoy the journey together.
     </span>
 </div>
 <div class="heart-beat" style="margin: 0 auto 18px auto; display: flex; justify-content: center;">
   <div class="heart-shape"></div>
 </div>
 """, unsafe_allow_html=True)
-st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a love story.</span>", unsafe_allow_html=True)
-st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love blossom on this page—AI will turn your sweetest moments into a keepsake as timeless as your bond. Perfect for Valentine's Day, anniversaries, or any day you want to say 'I love you.'</span>", unsafe_allow_html=True)
+st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a step closer together.</span>", unsafe_allow_html=True)
+st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love story unfold—one answer, one smile, one page at a time.</span>", unsafe_allow_html=True)
 import random
 romantic_quotes = [
         ("Love is composed of a single soul inhabiting two bodies.", "Aristotle"),
@@ -266,44 +265,66 @@ st.markdown("---")
     # File uploader already defined above; remove duplicate
 import os
 with st.sidebar:
+    with st.expander("🤔 Did You Know? Ho'oponopono"):
+        st.markdown("Have you heard of Ho'oponopono?")
+        st.markdown("""
+        <span style='color:#b91372;'>
+        <b>Ho'oponopono</b> is a Hawaiian practice of reconciliation and forgiveness. It helps heal relationships by encouraging us to say four simple phrases:
+        <br><br>
+        <b>I'm sorry. Please forgive me. Thank you. I love you.</b>
+        <br><br>
+        Use these words to express your feelings, release past hurts, and invite harmony into your relationship. Even if spoken or written silently, they can bring peace and understanding.
+        </span>
+        """, unsafe_allow_html=True)
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
     logo_path = os.path.join(os.path.dirname(__file__), "soulvest_logo.png")
     st.image(logo_path, width=120)
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown("<span class='sidebar-title'>SoulVest Memory Book</span>", unsafe_allow_html=True)
+    st.markdown("<span class='sidebar-title'>SoulVest LoveBook</span>", unsafe_allow_html=True)
     # File uploader removed from sidebar; only appears in main content area
     st.markdown("---")
     # Removed duplicate Love Language Suggestions section
     st.markdown("### 💝 How it works")
     st.markdown("""
-    1. **Fill in your memories** across different chapters
-    2. **AI weaves them** into a beautiful narrative
-    3. **Download** your memory book as PDF
-    4. **Add more memories** anytime!
+    1. **Fill in your memories** and answer fun, thoughtful questions together
+    2. **See your story come alive** as a keepsake PDF
+    3. **Add more memories or reflections** anytime!
+
+    <span style='color:#b91372;font-size:16px;'><b>Data Privacy:</b> Everything you enter—names, memories, photos, and feedback—stays <b>only in your browser</b> and is <b>never uploaded or shared</b>. Your privacy and comfort are our top priority.</span>
 
     Perfect for:
-    - Valentine's Day gift
-    - Anniversary surprise
-    - Relationship milestone
-    - Just because ❤️
-    """)
+    - Rediscovering each other
+    - Sharing a laugh or a memory
+    - Celebrating your unique bond
+    - Valentine's Day, anniversaries, or any day you want to connect ❤️
+    """, unsafe_allow_html=True)
     st.markdown("---")
-    st.markdown("### 🤔 Do You Know?")
-    st.markdown("<span style='color:#b91372;font-size:16px;'>Tips to impress your love partner:</span>", unsafe_allow_html=True)
-    import random
-    love_tips = [
-        "Words of affirmation: Tell your partner how much they mean to you.",
-        "Acts of service: Do something thoughtful for your loved one.",
-        "Quality time: Spend uninterrupted moments together.",
-        "Physical touch: A warm hug or gentle touch can say a lot.",
-        "Gift giving: Surprise your partner with a meaningful gift.",
-        "Write a love letter and share your feelings.",
-        "Plan a romantic date night.",
-        "Share a favorite memory and relive it together.",
-        "Compliment your partner sincerely.",
-        "Listen deeply and show you care."
+    st.markdown("### 💡 Pro Love & Relationship Tips")
+    pro_tips = [
+        "What's your partner's love language? Try a little experiment—give them a compliment, a hug, or a small surprise and see what makes them light up!",
+        "Ever just listened, really listened, to your partner? Sometimes, that's all it takes to make their day.",
+        "A quick thank you or a silly compliment can turn an ordinary moment into something special. Sprinkle them often!",
+        "Disagreements? Totally normal! Next time, try saying 'I feel...' instead of 'You always...'. It keeps things chill.",
+        "Messed up? Happens to everyone. A simple 'I'm sorry' (and a hug) can work wonders.",
+        "Busy week? Even 10 minutes of phone-free time together can feel like a mini-vacation.",
+        "Ask your partner something new about their childhood or dreams. You might be surprised what you learn!",
+        "Cheer each other on—big wins, small wins, or just making it through Monday. High fives encouraged!",
+        "Don't forget the power of a random hug, a kiss on the forehead, or holding hands. Feels good, right?",
+        "Laughter is the best glue. Share a meme, watch a funny video, or just be silly together!",
+        "Share your feelings, not just your plans. Emotional closeness is the real magic.",
+        "When things get tough, sometimes a listening ear or a warm cup of tea means more than any gift. Be there for each other.",
+        "Did you know? The Hawaiian practice of Ho'oponopono uses four simple phrases—I'm sorry. Please forgive me. Thank you. I love you.—to heal and strengthen relationships. Try writing or saying these words to your partner for a powerful, loving impact!"
     ]
-    st.success(random.choice(love_tips))
+    import random
+    import time
+    if 'tip_index' not in st.session_state:
+        st.session_state.tip_index = 0
+        st.session_state.tip_last_update = time.time()
+    # Rotate tip every 10 seconds
+    if time.time() - st.session_state.tip_last_update > 10:
+        st.session_state.tip_index = (st.session_state.tip_index + 1) % len(pro_tips)
+        st.session_state.tip_last_update = time.time()
+    st.info(pro_tips[st.session_state.tip_index])
     st.markdown("### 🎁 Place a Gift Order (External)")
     st.markdown("<span style='color:#b91372;font-size:16px;'>Surprise your loved one with a gift! Choose from these famous sites (not paid, just for your convenience):</span>", unsafe_allow_html=True)
     st.markdown("""
@@ -319,8 +340,25 @@ with st.sidebar:
 # Main content
 tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 
-
 with tab1:
+    # Ho'oponopono-inspired final touch
+    st.markdown("---")
+    st.markdown("### 🌺 Final Touch: Express from the Heart")
+    st.markdown("Sometimes, a few simple words can heal and bring you closer. Use this space to write a heartfelt message to your partner, inspired by the spirit of Ho'oponopono:")
+    st.caption("E.g. Hi dear, I am sorry if I hurt you unintentionally. Please forgive me. Thank you for being there, and I love you.")
+    hooponopono_message = st.text_area("Your heartfelt message (optional)", key="hooponopono", height=60)
+    # Fun Quiz: How well do you know each other?
+    with st.expander("🎲 Fun Quiz: How Well Do You Know Each Other?"):
+        st.markdown("Test how much you know about your partner! Each of you can answer separately, then compare your answers for some fun and surprises.")
+        quiz_questions = [
+            ("What is your partner's favorite food?", "E.g. Pizza, Sushi, etc."),
+            ("What is your partner's dream vacation destination?", "E.g. Paris, Maldives, etc."),
+            ("What is your partner's biggest pet peeve?", "E.g. Loud chewing, being late, etc."),
+            ("What song always reminds you of your partner?", "E.g. 'Perfect' by Ed Sheeran, etc."),
+            ("What is your partner's hidden talent?", "E.g. Singing, drawing, etc.")
+        ]
+        for idx, (q, ph) in enumerate(quiz_questions):
+            st.text_input(f"{idx+1}. {q}", placeholder=ph, key=f"quiz_{idx}")
     st.markdown("## Tell Us Your Story")
     uploaded_bg = st.file_uploader(
         "Upload your photo (optional)",
@@ -328,6 +366,7 @@ with tab1:
         help="Personalize your memory book with a photo!",
         key="main_bg_upload"
     )
+    st.info("Uploading your photo is optional. If you choose to upload, your photo will be used as the background for your personalized memory book PDF. If you do not upload a photo, a beautiful default background will be used instead. Your photo is not shared or stored anywhere else.")
 
 
     import tempfile
@@ -362,18 +401,20 @@ with tab1:
         person2_name = st.text_input("", key="p2", label_visibility="collapsed")
 
 
-    # Redesigned, engaging questions
+    # Redesigned, engaging questions for harmony and reconciliation
     questions = [
         ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
         ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
         ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
         ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
-        ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?") ,
+        ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?"),
         ("What is your favorite thing about your relationship?", "E.g. We can be silly together and always support each other...", "fav_thing", "Tip: Think about what makes your bond special or different from others."),
         ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
         ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
         ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
-        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
+        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?"),
+        ("Is there something you wish to be forgiven for, or something you want to forgive your partner for? How can forgiveness help your relationship heal?", "E.g. I want to say sorry for the times I hurt you...", "forgiveness", "Tip: Forgiveness is a gift you give to yourself and your partner. Be honest and gentle."),
+        ("What steps can you both take to resolve conflicts and create more harmony in your relationship?", "E.g. We can listen more, judge less, and support each other...", "harmony", "Tip: Think about small changes or new habits that could help you both feel more connected and at peace.")
     ]
 
     answers = {}
@@ -547,7 +588,7 @@ with tab2:
 st.markdown("---")
 st.markdown(
     "<p style='text-align: center; color: #636e72;'>Made with ❤️ by <a href='https://soulvest.ai' style='color: #6c5ce7; text-decoration: none;'>SoulVest.ai</a> | Free for Valentine's Week<br>"
-    "&copy; 2026 SoulVest Memory Book. All rights reserved." 
+    "&copy; 2026 SoulVest LoveBook. All rights reserved." 
     "</p>",
     unsafe_allow_html=True
 )
@@ -555,9 +596,10 @@ st.markdown(
 st.markdown("---")
 st.markdown("### 🔒 Privacy & Data Security")
 st.markdown("""
-<span style='color:#b91372;'>Your privacy matters to us. All memories, stories, and feedback you share in SoulVest Memory Book are stored securely and are never shared with third parties. Feedback is saved locally and used only to improve the app. No personal or sensitive information is sold, published, or used for marketing. You are always in control of your data.</span>
+<span style='color:#b91372;'>Your privacy and comfort matter to us. All information you enter in SoulVest Memory Book—including your names, memories, stories, photos, and feedback—is stored <b>only in your browser</b> and is <b>never uploaded to any server</b> or shared with third parties. Everything stays private on your device. Feedback is saved locally and used only to improve your experience. No personal or sensitive information is sold, published, or used for marketing. You are always in control of your data, and you can use the app with complete peace of mind.</span>
+<br><br>
+<span style='color:#b91372;'>We want you to feel comfortable and safe before using our app. If you have any questions or concerns about your privacy, please contact us at <a href='mailto:soulvest1111@gmail.com'>soulvest1111@gmail.com</a>.</span>
 """, unsafe_allow_html=True)
-st.markdown("If you have questions or concerns about your privacy, please contact us at <a href='mailto:soulvest1111@gmail.com'>soulvest1111@gmail.com</a>.", unsafe_allow_html=True)
 
 # Feedback Form
 st.markdown("---")
