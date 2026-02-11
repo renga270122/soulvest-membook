@@ -292,7 +292,7 @@ with st.sidebar:
 
     <span style='color:#b91372;font-size:16px;'><b>Data Privacy:</b> Everything you enter—names, memories, photos, and feedback—stays <b>only in your browser</b> and is <b>never uploaded or shared</b>. Your privacy and comfort are our top priority.</span>
 
-    Perfect for:
+    <span style='font-weight:bold;'>Perfect for:</span>
     - Rediscovering each other
     - Sharing a laugh or a memory
     - Celebrating your unique bond
