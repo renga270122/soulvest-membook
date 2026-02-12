@@ -157,14 +157,6 @@ def get_user_by_id(user_id):
 # --- Welcome Screen & Auth UI with Guest Option ---
 def auth_ui():
 
-    # Kiosk mode: always guest, no auth UI
-    if KIOSK_MODE:
-        st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
-        return
-    # Only show auth UI if not already logged in (including guest)
-    if st.session_state.user is not None:
-        return
-
     # App branding at the top
     st.markdown("""
 <div class='lovebook-branding'>
@@ -237,6 +229,17 @@ if (!window.heartsAdded) {
 }
 </script>
 """, unsafe_allow_html=True)
+
+    # Kiosk mode: always guest, no auth UI
+    if KIOSK_MODE:
+        st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
+        return
+    # Only show auth UI if not already logged in (including guest)
+    if st.session_state.user is not None:
+        return
+
+    # Show onboarding radio only after branding, hero, and how it works
+    # (Removed duplicate onboarding radio here)
     st.markdown("""
 <style>
     .hero-bg-image {
@@ -325,8 +328,7 @@ if (!window.heartsAdded) {
 </div>
 """, unsafe_allow_html=True)
     st.write("")
-    st.write("## Already have an account? Or first time user?")
-    auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
+    auth_mode = st.radio("## Already have an account? Or first time user?", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True, key="onboarding_auth_mode")
 
     if auth_mode == "Sign Up":
         name = st.text_input("Your Name", key="signup_name")
@@ -949,19 +951,59 @@ with tab1:
             st.session_state.p2 = audio_processor_partner.result
             person2_name = audio_processor_partner.result
 
-    # Redesigned, engaging questions for harmony and reconciliation
-    questions = [
-        ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
-        ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
-        ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
-        ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
-        ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?"),
-        ("What is your favorite thing about your relationship?", "E.g. We can be silly together and always support each other...", "fav_thing", "Tip: Think about what makes your bond special or different from others."),
-        ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
-        ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
-        ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
-        ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
-    ]
+    # Multiple themed question sets
+    question_sets = {
+        "Classic Love Story (Default)": [
+            ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
+            ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
+            ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
+            ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
+            ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?"),
+            ("What is your favorite thing about your relationship?", "E.g. We can be silly together and always support each other...", "fav_thing", "Tip: Think about what makes your bond special or different from others."),
+            ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
+            ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
+            ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
+            ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
+        ],
+        "Hobbies, Passions & Love Language": [
+            ("What hobby or activity do you most enjoy doing together?", "E.g. Cooking, hiking, painting...", "shared_hobby", "Tip: Think about what brings you both joy."),
+            ("Describe a time you supported each other's passions or dreams.", "E.g. Cheering at their first art show...", "support_passions", "Tip: How do you encourage each other?"),
+            ("What is your partner's favorite way to relax or unwind?", "E.g. Reading, music, yoga...", "relax_way", "Tip: What helps them recharge?"),
+            ("How do your love languages differ or match?", "E.g. Words of affirmation vs. acts of service...", "love_language", "Tip: How do you express and receive love?"),
+            ("Share a new skill or hobby you want to try together.", "E.g. Dancing, pottery, learning a language...", "new_skill", "Tip: What would be fun to learn as a couple?"),
+            ("What is something your partner is passionate about that inspires you?", "E.g. Their dedication to volunteering...", "partner_passion", "Tip: What do you admire about their interests?"),
+            ("Describe a favorite memory related to music, art, or creativity.", "E.g. Singing karaoke together...", "creative_memory", "Tip: Any artistic or musical moments?"),
+            ("How do you celebrate each other's achievements, big or small?", "E.g. Special dinner, handwritten note...", "celebrate_achievements", "Tip: What rituals or habits do you have?"),
+            ("What is a quirky or unique interest you share?", "E.g. Collecting postcards, birdwatching...", "quirky_interest", "Tip: Something that makes your bond special."),
+            ("If you could plan the perfect day based on your shared passions, what would it look like?", "E.g. Morning run, afternoon cooking, evening movie...", "passion_day", "Tip: Combine your favorite things!"),
+        ],
+        "Anniversary Reflections": [
+            ("What is your favorite memory from the past year together?", "E.g. Our trip to the mountains...", "fav_year_memory", "Tip: Think about a moment that defined your year."),
+            ("How has your relationship grown or changed this year?", "E.g. We learned to communicate better...", "growth", "Tip: Reflect on your journey as a couple."),
+            ("What is something new you discovered about your partner?", "E.g. Their hidden talent for cooking...", "discovery", "Tip: Surprises, quirks, or new habits."),
+            ("What are you most grateful for in your relationship?", "E.g. Their constant support...", "gratitude", "Tip: Big or small, what means the most?"),
+            ("What is your wish for the coming year together?", "E.g. More adventures and laughter...", "wish", "Tip: Hopes, dreams, or goals for the future."),
+        ],
+        "Adventure & Travel": [
+            ("Describe your most memorable trip together.", "E.g. Our Paris adventure...", "memorable_trip", "Tip: What made it special?"),
+            ("What destination is on your couple's bucket list?", "E.g. Japan in cherry blossom season...", "bucket_list", "Tip: Dream big!"),
+            ("Share a funny or unexpected travel story.", "E.g. We got lost and found a hidden gem...", "funny_travel", "Tip: Mishaps, surprises, or laughs."),
+            ("What do you love most about traveling together?", "E.g. Discovering new foods...", "love_travel", "Tip: What makes you a great travel team?"),
+            ("If you could go anywhere tomorrow, where would you go and why?", "E.g. Back to the beach...", "go_anywhere", "Tip: Let your imagination run wild!"),
+        ]
+    }
+
+    # Let user select a question set
+    st.markdown("### Choose a Question Set for Your Book")
+    # Only allow additional sets for paid users
+    if user and user.get('role') == 'premium':
+        question_set_names = list(question_sets.keys())
+    else:
+        question_set_names = ["Classic Love Story (Default)"]
+        if user and user.get('role') == 'free':
+            st.info("Upgrade to premium to unlock more question sets!")
+    selected_set = st.selectbox("Select a theme:", question_set_names, key="question_set_selector")
+    questions = question_sets[selected_set]
 
     answers = {}
     for idx, (q, ph, key, tip) in enumerate(questions):
@@ -1342,7 +1384,7 @@ if dashboard_tab:
 st.markdown("---")
 # --- Freemium Model Notice ---
 if user:
-    if user['role'] == 'free' and user['usage_count'] > 3:
+    if user['role'] == 'free' and user['usage_count'] > 1:
         st.warning("You have reached the free usage limit. Upgrade to premium for unlimited books and features!")
     if user['role'] == 'guest':
         st.info("You are using the app as a guest. Your data will not be saved and you cannot resume or access a dashboard. Sign up or log in for full features!")
