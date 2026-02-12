@@ -1,6 +1,7 @@
 streamlit
 fpdf
 Pillow
+qrcode
 edge-tts
 streamlit-webrtc
 speechrecognition
