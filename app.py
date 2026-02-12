@@ -328,7 +328,12 @@ if (!window.heartsAdded) {
 </div>
 """, unsafe_allow_html=True)
     st.write("")
-    auth_mode = st.radio("## Already have an account? Or first time user?", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True, key="onboarding_auth_mode")
+    auth_mode = None
+    try:
+        auth_mode = st.radio("## Already have an account? Or first time user?", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True, key="onboarding_auth_mode")
+    except Exception:
+        # fallback if Streamlit fails to render radio
+        auth_mode = "Sign Up"
 
     if auth_mode == "Sign Up":
         name = st.text_input("Your Name", key="signup_name")
