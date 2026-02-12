@@ -1,3 +1,6 @@
+# --- Kiosk Mode (for public/shared use) ---
+import os
+KIOSK_MODE = os.environ.get("LOVEBOOK_KIOSK_MODE", "0") == "1"
 import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
@@ -6,40 +9,62 @@ import sqlite3
 import hashlib
 import uuid
 
-# Page config
-st.set_page_config(
-        page_title="SoulVest LoveBook 💖 | The Original Digital Memory Book",
-        page_icon="💖",
-        layout="wide"
-)
+# QR code support
+import qrcode
+from PIL import Image
 
-# --- Google Analytics (gtag.js) ---
-st.markdown("""
-<script async src='https://www.googletagmanager.com/gtag/js?id=G-75ZF3726F6'></script>
-<script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-75ZF3726F6');
-</script>
-""", unsafe_allow_html=True)
-
-# --- Session State Initialization ---
-# --- SQLite Setup ---
-DB_PATH = "users.db"
+# --- DB Connection Helper (must be above all usages) ---
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect("lovebook.db", check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
+        email TEXT UNIQUE,
+        password_hash TEXT,
         role TEXT DEFAULT 'free',
         usage_count INTEGER DEFAULT 0,
         story TEXT,
         couple_names TEXT,
+        profile_photo TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     return conn
+
+# Page config
+# --- Custom Branding/Theming for Venues ---
+import os
+VENUE_BRAND = os.environ.get("LOVEBOOK_BRAND", "SoulVest LoveBook 💖")
+VENUE_LOGO = os.environ.get("LOVEBOOK_LOGO", "https://img.icons8.com/emoji/96/000000/red-heart.png")
+VENUE_THEME_COLOR = os.environ.get("LOVEBOOK_THEME_COLOR", "#b91372")
+VENUE_BG_GRADIENT = os.environ.get("LOVEBOOK_BG_GRADIENT", "135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%")
+
+st.set_page_config(
+    page_title=f"{VENUE_BRAND} | The Original Digital Memory Book",
+    page_icon="💖",
+    layout="wide"
+)
+
+# --- Google Analytics (gtag.js) ---
+st.markdown(f"""
+<script async src='https://www.googletagmanager.com/gtag/js?id=G-75ZF3726F6'></script>
+<style>
+    .sidebar-logo {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 16px;
+    }}
+    .sidebar-logo img {{
+        width: 120px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(255,0,100,0.3), 0 2px 8px rgba(0,0,0,0.15);
+        border: 2px solid #fff;
+        animation: heartbeat 1.5s infinite;
+    }}
+    body {{
+        background: linear-gradient({VENUE_BG_GRADIENT}) !important;
+    }}
+</style>
+""", unsafe_allow_html=True)
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -57,13 +82,13 @@ def signup_user(email, password):
 
 def login_user(email, password):
     conn = get_db()
-    cur = conn.execute("SELECT id, password_hash, role, usage_count, story, couple_names FROM users WHERE email=?", (email,))
+    cur = conn.execute("SELECT id, password_hash, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
     row = cur.fetchone()
     conn.close()
     if row and row[1] == hash_password(password):
         return {
             "id": row[0], "email": email, "role": row[2], "usage_count": row[3],
-            "story": row[4] or "", "couple_names": row[5] or ""
+            "story": row[4] or "", "couple_names": row[5] or "", "profile_photo": row[6]
         }
     return None
 
@@ -75,13 +100,13 @@ def save_user_progress(user_id, story, couple_names):
 
 def get_user_by_id(user_id):
     conn = get_db()
-    cur = conn.execute("SELECT id, email, role, usage_count, story, couple_names FROM users WHERE id=?", (user_id,))
+    cur = conn.execute("SELECT id, email, role, usage_count, story, couple_names, profile_photo FROM users WHERE id=?", (user_id,))
     row = cur.fetchone()
     conn.close()
     if row:
         return {
             "id": row[0], "email": row[1], "role": row[2], "usage_count": row[3],
-            "story": row[4] or "", "couple_names": row[5] or ""
+            "story": row[4] or "", "couple_names": row[5] or "", "profile_photo": row[6]
         }
     return None
 
@@ -91,18 +116,49 @@ def get_user_by_id(user_id):
 
 # --- Welcome Screen & Auth UI with Guest Option ---
 def auth_ui():
-    st.markdown("""
-    <div style='text-align:center;margin-top:32px;margin-bottom:32px;'>
-        <img src='https://img.icons8.com/emoji/96/000000/red-heart.png' width='72' style='margin-bottom:12px;'>
-        <h1 style='color:#b91372;font-family:Georgia,serif;'>Welcome to SoulVest LoveBook 💖</h1>
-        <p style='font-size:20px;color:#b91372;font-family:Georgia,serif;'>
-            Create, cherish, and share your love story.<br>
-            <b>Continue as Guest</b> for a quick start, or <b>Sign Up / Log In</b> to save and resume your memories.<br>
-            <span style='color:#ee9ca7;'>Your privacy is our priority. No spam, ever.</span>
-        </p>
+
+    # Kiosk mode: always guest, no auth UI
+    if KIOSK_MODE:
+        st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
+        return
+    # Only show auth UI if not already logged in (including guest)
+    if st.session_state.user is not None:
+        return
+
+    st.markdown(f"""
+    <div style='min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient({VENUE_BG_GRADIENT}); border-radius: 32px; box-shadow: 0 8px 32px rgba(185,19,114,0.08); margin: 0 0 32px 0; padding: 48px 0;'>
+        <img src='{VENUE_LOGO}' width='110' style='margin-bottom:18px; box-shadow:0 2px 16px #b9137240; border-radius:24px;'>
+        <h1 style='color:{VENUE_THEME_COLOR};font-family:Georgia,serif;font-size:2.8rem;margin-bottom:0;'>Welcome to <span style="font-weight:700;">{VENUE_BRAND}</span></h1>
+        <div style='font-size:1.3rem;color:#444;margin:18px 0 0 0;max-width:600px;'>
+            <span style='color:#b91372;font-size:1.5rem;'>💖</span> The first <b>AI-powered</b> digital memory book for couples, families, and friends.<br>
+            <span style='color:#b91372;'>Cherish your story, together.</span>
+        </div>
+        <div style='margin:32px 0 0 0;'>
+            <span style='font-size:1.1rem;color:#222;'>
+                <b>Continue as Guest</b> for a quick start, or <b>Sign Up / Log In</b> to save and resume your memories.<br>
+                <span style='color:#ee9ca7;'>Your privacy is our priority. No spam, ever.</span>
+            </span>
+        </div>
+        <div style='margin-top:40px;display:flex;gap:40px;justify-content:center;'>
+            <div style='text-align:center;'>
+                <span style='font-size:2.2rem;'>📝</span><br>
+                <span style='color:#b91372;font-weight:600;'>Create</span><br>
+                <span style='font-size:1rem;color:#555;'>Answer fun, thoughtful prompts</span>
+            </div>
+            <div style='text-align:center;'>
+                <span style='font-size:2.2rem;'>📖</span><br>
+                <span style='color:#b91372;font-weight:600;'>View</span><br>
+                <span style='font-size:1rem;color:#555;'>See your story come alive</span>
+            </div>
+            <div style='text-align:center;'>
+                <span style='font-size:2.2rem;'>🎁</span><br>
+                <span style='color:#b91372;font-weight:600;'>Share</span><br>
+                <span style='font-size:1rem;color:#555;'>Download, print, or listen</span>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         auth_mode = st.radio("Choose how to continue:", ["Continue as Guest", "Sign Up", "Log In"])
@@ -110,20 +166,21 @@ def auth_ui():
             if st.button("Continue as Guest", use_container_width=True):
                 st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
                 st.success("Continuing as guest. Data will not be saved.")
-                st.experimental_rerun()
-            st.info("As a guest, your data will not be saved and you cannot resume later. Sign up for more features!")
+                st.rerun()
             return
         elif auth_mode == "Sign Up":
+            first_name = st.text_input("First Name", key="signup_first_name")
+            last_name = st.text_input("Last Name", key="signup_last_name")
             email = st.text_input("Email", key="signup_email")
             password = st.text_input("Password", type="password", key="signup_pw")
             password2 = st.text_input("Confirm Password", type="password", key="signup_pw2")
             if st.button("Sign Up", use_container_width=True):
-                if not email or not password:
-                    st.error("Email and password required.")
+                if not first_name or not last_name or not email or not password:
+                    st.error("All fields are required.")
                 elif password != password2:
                     st.error("Passwords do not match.")
                 else:
-                    ok, msg = signup_user(email, password)
+                    ok, msg = signup_user(email, password, first_name, last_name)
                     if ok:
                         st.success(msg)
                     else:
@@ -137,7 +194,7 @@ def auth_ui():
                 if user:
                     st.session_state.user = user
                     st.success(f"Welcome, {user['email']}!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Invalid credentials.")
             if st.button("Forgot Password?", key="forgot_pw_btn"):
@@ -160,13 +217,6 @@ if 'user' not in st.session_state:
     st.session_state.user = None
 auth_ui()
 user = st.session_state.user
-# --- Logout Button in Sidebar ---
-if user and user.get('role') not in (None, 'guest'):
-    with st.sidebar:
-        if st.button("Log Out", key="logout_btn", help="Sign out of your account"):
-            st.session_state.user = None
-            st.success("Logged out successfully.")
-            st.experimental_rerun()
 # --- User Dashboard Tab for Signed-in Users ---
 def get_all_books_for_user(user_id):
     conn = get_db()
@@ -178,14 +228,26 @@ def get_all_books_for_user(user_id):
 
 # --- Persistent Guest Mode Banner ---
 if user and user.get('role') == 'guest':
+    if not KIOSK_MODE:
+        with st.sidebar:
+            st.markdown('---')
+            st.markdown("**Want to save your memories?**")
+            if st.button("Sign Up / Log In", key="guest_signup_sidebar"):
+                st.session_state.user = None
+                st.rerun()
     st.markdown("""
-    <div style='background:linear-gradient(90deg,#ffb6b9 0%,#fae3d9 100%);padding:16px 0 16px 0;text-align:center;border-radius:12px;margin-bottom:18px;border:2px solid #ee9ca7;'>
-        <span style='font-size:20px;color:#b91372;font-family:Georgia,serif;font-weight:bold;'>
-            You are using SoulVest LoveBook as a <span style='color:#ee9ca7;'>Guest</span>.<br>
-            <span style='font-size:16px;font-weight:normal;'>Your data will not be saved and you cannot resume later. <a href='#' style='color:#b91372;text-decoration:underline;'>Sign up</a> for full features!</span>
+<div style='background:linear-gradient(90deg,#ffb6b9 0%,#fae3d9 100%);padding:16px 0 16px 0;text-align:center;border-radius:12px;margin-bottom:18px;border:2px solid #ee9ca7;'>
+    <span style='font-size:20px;color:#b91372;font-family:Georgia,serif;font-weight:bold;'>
+        You are using SoulVest LoveBook as a <span style='color:#ee9ca7;'>Guest</span>.<br>
+        <span style='font-size:16px;font-weight:normal;'>
+            <b>Privacy for all:</b> Your memories are always private and never shared.<br>
+            <b>Guest mode:</b> You can create a book, but you won’t be able to resume or access it from other devices.<br>
+            """ + ("<b>Sign up or log in</b> to unlock your personal dashboard, save progress, and access your books anytime, anywhere.<br>" if not KIOSK_MODE else "") + """
+            <span style='color:#b91372;text-decoration:underline;'>No spam, no ads, just your story—always secure.</span>
         </span>
-    </div>
-    """, unsafe_allow_html=True)
+    </span>
+</div>
+""", unsafe_allow_html=True)
 
 if 'memories' not in st.session_state:
     st.session_state.memories = {}
@@ -471,6 +533,39 @@ st.markdown("---")
     # File uploader already defined above; remove duplicate
 import os
 with st.sidebar:
+    # --- My Account/Profile Section ---
+    user = st.session_state.get('user', {})
+    with st.expander("👤 My Account", expanded=True):
+        if user and user.get('email'):
+            # Show profile photo if available
+            profile_photo_path = user.get('profile_photo')
+            if profile_photo_path and os.path.exists(profile_photo_path):
+                st.image(profile_photo_path, width=72)
+            st.markdown(f"<div style='text-align:center; font-size:16px; color:#b91372;'><b>{user.get('email')}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; font-size:14px; color:#888;'>Welcome back!</div>", unsafe_allow_html=True)
+            # Dashboard link
+            if st.button("📂 My Dashboard", key="sidebar_dashboard_btn"):
+                st.session_state['show_dashboard'] = True
+            # Logout button
+            if st.button("🚪 Logout", key="sidebar_logout_btn"):
+                st.session_state.user = None
+                st.session_state['show_dashboard'] = False
+                st.success("Logged out!")
+                st.rerun()
+        else:
+            st.markdown(f"<div style='text-align:center; font-size:16px; color:#b91372;'><b>Guest</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; font-size:14px; color:#888;'>Welcome to LoveBook!</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    # QR code for homepage quick access
+    HOMEPAGE_URL = "https://lovebook.soulvest.app"  # Update to your homepage
+    def generate_qr_code(url):
+        qr = qrcode.QRCode(version=1, box_size=8, border=2)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#b91372", back_color="white").convert('RGB')
+        return img
+    st.markdown("<div style='text-align:center;'><b>Scan to use LoveBook anywhere!</b></div>", unsafe_allow_html=True)
+    st.image(generate_qr_code(HOMEPAGE_URL), caption="Open LoveBook on your phone", width=200)
     with st.expander("🤔 Did You Know? Ho'oponopono"):
         st.markdown("Have you heard of Ho'oponopono?")
         st.markdown("""
@@ -483,8 +578,7 @@ with st.sidebar:
         </span>
         """, unsafe_allow_html=True)
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
-    logo_path = os.path.join(os.path.dirname(__file__), "soulvest_logo.png")
-    st.image(logo_path, width=120)
+    st.image(VENUE_LOGO, width=120)
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<span class='sidebar-title'>SoulVest LoveBook</span>", unsafe_allow_html=True)
     # File uploader removed from sidebar; only appears in main content area
@@ -540,10 +634,9 @@ with st.sidebar:
     st.markdown("**Made with ❤️ by [SoulVest.ai](https://soulvest.ai)**")
 
 # Main content
-tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 dashboard_tab = None
 if user and user.get('role') not in (None, 'guest'):
-    tab1, tab2, dashboard_tab = st.tabs(["📝 Create Memory Book", "📖 View Your Story", "📂 My Dashboard"])
+    tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 else:
     tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 
@@ -744,22 +837,39 @@ with tab1:
                             st.error(msg)
 
 with tab2:
-    if dashboard_tab:
-        with dashboard_tab:
-            st.markdown("# 📂 My Dashboard")
-            st.markdown("View and resume your saved memory books.")
-            books = get_all_books_for_user(user['id'])
-            if books:
-                for book in books:
-                    st.markdown(f"### {book[2] or 'Untitled Book'}")
-                    st.markdown(f"<span style='color:#636e72;font-size:14px;'>Created: {book[3]}</span>", unsafe_allow_html=True)
-                    if st.button(f"View Story", key=f"view_{book[0]}"):
-                        st.session_state.story = book[1]
-                        st.session_state.couple_names = book[2]
-                        st.session_state.story_generated = True
-                        st.success("Loaded your saved book! Go to 'View Your Story' tab.")
+    # Only show dashboard if user clicks My Dashboard in sidebar
+    if st.session_state.get('show_dashboard'):
+        st.session_state['show_dashboard'] = False  # Reset after showing
+        st.markdown("# 👤 My Dashboard")
+        st.markdown("---")
+        # Profile and Stats Section
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            profile_photo_path = user.get('profile_photo')
+            if profile_photo_path and os.path.exists(profile_photo_path):
+                st.image(profile_photo_path, width=100, caption="Profile Photo")
             else:
-                st.info("No saved books yet. Create your first memory book!")
+                st.image(VENUE_LOGO, width=80, caption="No Photo")
+        with col2:
+            st.markdown(f"<div style='font-size:20px; color:#b91372;'><b>{user.get('email', 'Guest')}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#888;'>Account Type:</span> <b>{user.get('role', 'guest').capitalize()}</b>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#888;'>Books Created:</span> <b>{user.get('usage_count', 0)}</b>", unsafe_allow_html=True)
+        st.markdown("---")
+        # Saved Books Section
+        st.subheader("📚 Your Saved Memory Books")
+        books = get_all_books_for_user(user['id'])
+        if books:
+            for book in books:
+                st.markdown(f"<div style='font-size:18px; color:#b91372;'><b>{book[2] or 'Untitled Book'}</b></div>", unsafe_allow_html=True)
+                st.markdown(f"<span style='color:#636e72;font-size:14px;'>Created: {book[3]}</span>", unsafe_allow_html=True)
+                if st.button(f"View Story", key=f"view_{book[0]}"):
+                    st.session_state.story = book[1]
+                    st.session_state.couple_names = book[2]
+                    st.session_state.story_generated = True
+                    st.success("Loaded your saved book! Go to 'View Your Story' tab.")
+        else:
+            st.info("No saved books yet. Create your first memory book!")
+        st.markdown("---")
     # Load user story if available (not for guest)
     if user and user.get('role') != 'guest' and not st.session_state.story and user.get('story'):
         st.session_state.story = user['story']
@@ -823,6 +933,48 @@ with tab2:
         import io
 
         def create_pdf(title, story, bg_image=None):
+            def create_certificate_pdf(names, date=None):
+                from fpdf import FPDF
+                import io
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 28)
+                pdf.set_text_color(185, 19, 114)
+                pdf.cell(0, 30, "Certificate of Love", ln=True, align='C')
+                pdf.ln(10)
+                pdf.set_font("Arial", '', 18)
+                pdf.set_text_color(0, 0, 0)
+                pdf.multi_cell(0, 14, f"This certifies that\n\n{names}\n\nhave created a beautiful LoveBook together\n\n", align='C')
+                if date:
+                    pdf.set_font("Arial", 'I', 14)
+                    pdf.cell(0, 10, f"Date: {date}", ln=True, align='C')
+                pdf.ln(20)
+                pdf.set_font("Arial", 'I', 12)
+                pdf.set_text_color(185, 19, 114)
+                pdf.cell(0, 10, "— SoulVest LoveBook", ln=True, align='R')
+                return pdf.output(dest='S')
+                # Certificate download option
+                if st.session_state.story_generated and st.session_state.couple_names:
+                    cert_pdf = create_certificate_pdf(st.session_state.couple_names, datetime.now().strftime('%B %d, %Y'))
+                    if isinstance(cert_pdf, bytearray):
+                        cert_pdf = bytes(cert_pdf)
+                    st.download_button(
+                        label="📜 Download LoveBook Certificate (PDF)",
+                        data=cert_pdf,
+                        file_name="lovebook_certificate.pdf",
+                        mime="application/pdf"
+                    )
+                    # Certificate download in dashboard
+                    if user.get('couple_names'):
+                        cert_pdf = create_certificate_pdf(user['couple_names'], datetime.now().strftime('%B %d, %Y'))
+                        if isinstance(cert_pdf, bytearray):
+                            cert_pdf = bytes(cert_pdf)
+                        st.download_button(
+                            label="📜 Download LoveBook Certificate (PDF)",
+                            data=cert_pdf,
+                            file_name="lovebook_certificate.pdf",
+                            mime="application/pdf"
+                        )
             pdf = FPDF()
             pdf.add_page()
             from PIL import Image
@@ -960,3 +1112,18 @@ with st.form("feedback_form"):
             st.error(f"Error saving feedback: {str(e)}")
     elif submitted:
         st.warning("Please enter your feedback before submitting.")
+
+def get_db():
+    conn = sqlite3.connect("lovebook.db", check_same_thread=False)
+    conn.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password_hash TEXT,
+        role TEXT DEFAULT 'free',
+        usage_count INTEGER DEFAULT 0,
+        story TEXT,
+        couple_names TEXT,
+        profile_photo TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    return conn
