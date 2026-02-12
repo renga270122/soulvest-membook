@@ -125,93 +125,99 @@ def auth_ui():
     if st.session_state.user is not None:
         return
 
-    st.markdown(f"""
-    <div style='min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient({VENUE_BG_GRADIENT}); border-radius: 32px; box-shadow: 0 8px 32px rgba(185,19,114,0.08); margin: 0 0 32px 0; padding: 48px 0;'>
-        <img src='{VENUE_LOGO}' width='110' style='margin-bottom:18px; box-shadow:0 2px 16px #b9137240; border-radius:24px;'>
-        <h1 style='color:{VENUE_THEME_COLOR};font-family:Georgia,serif;font-size:2.8rem;margin-bottom:0;'>Welcome to <span style="font-weight:700;">{VENUE_BRAND}</span></h1>
-        <div style='font-size:1.3rem;color:#444;margin:18px 0 0 0;max-width:600px;'>
-            <span style='color:#b91372;font-size:1.5rem;'>💖</span> The first <b>AI-powered</b> digital memory book for couples, families, and friends.<br>
-            <span style='color:#b91372;'>Cherish your story, together.</span>
-        </div>
-        <div style='margin:32px 0 0 0;'>
-            <span style='font-size:1.1rem;color:#222;'>
-                <b>Continue as Guest</b> for a quick start, or <b>Sign Up / Log In</b> to save and resume your memories.<br>
-                <span style='color:#ee9ca7;'>Your privacy is our priority. No spam, ever.</span>
-            </span>
-        </div>
-        <div style='margin-top:40px;display:flex;gap:40px;justify-content:center;'>
-            <div style='text-align:center;'>
-                <span style='font-size:2.2rem;'>📝</span><br>
-                <span style='color:#b91372;font-weight:600;'>Create</span><br>
-                <span style='font-size:1rem;color:#555;'>Answer fun, thoughtful prompts</span>
-            </div>
-            <div style='text-align:center;'>
-                <span style='font-size:2.2rem;'>📖</span><br>
-                <span style='color:#b91372;font-weight:600;'>View</span><br>
-                <span style='font-size:1rem;color:#555;'>See your story come alive</span>
-            </div>
-            <div style='text-align:center;'>
-                <span style='font-size:2.2rem;'>🎁</span><br>
-                <span style='color:#b91372;font-weight:600;'>Share</span><br>
-                <span style='font-size:1rem;color:#555;'>Download, print, or listen</span>
-            </div>
+    # App branding at the top
+    st.markdown("""
+    <div style='width:100%;text-align:center;margin-top:12px;margin-bottom:0;'>
+        <span style='font-size:2.1rem;font-family:Georgia,serif;color:#b91372;font-weight:bold;'>💖 SoulVest LoveBook</span>
+    </div>
+    """, unsafe_allow_html=True)
+    # HERO section with embedded auth UI (minimal, working version)
+    st.markdown("""
+    <style>
+        .hero-bg-image {
+            min-height: 70vh;
+            width: 100vw;
+            position: relative;
+            background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%);
+            border-radius: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+            margin: 0 0 16px 0;
+            padding: 32px 0 24px 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .hero-content {
+            background: rgba(255,255,255,0.92);
+            border-radius: 24px;
+            padding: 48px 32px 32px 32px;
+            box-shadow: 0 2px 8px #b9137240;
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .main-caption {
+            color: #b91372;
+            font-family: Georgia,serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .welcome-text {
+            color: #b91372;
+            font-family: 'Segoe UI',sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subheading {
+            color: #b91372;
+            font-size: 1.1rem;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+    </style>
+    <div class='hero-bg-image'>
+        <div class='hero-content'>
+            <div class='welcome-text'>Welcome to SoulVest LoveBook</div>
+            <div class='main-caption'>Love is all we need</div>
+            <div class='subheading'>A soulful digital journal for mindful reflection</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown("", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        auth_mode = st.radio("Choose how to continue:", ["Continue as Guest", "Sign Up", "Log In"])
-        if auth_mode == "Continue as Guest":
-            if st.button("Continue as Guest", use_container_width=True):
-                st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
-                st.success("Continuing as guest. Data will not be saved.")
+    # Minimal working version: add authentication UI below the HERO section
+    st.write("")
+    st.write("## Already have an account? Or first time user?")
+    auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
+    if auth_mode == "Sign Up":
+        email = st.text_input("Email", key="signup_email")
+        password = st.text_input("Password", type="password", key="signup_pw")
+        if st.button("Sign Up", use_container_width=True, key="hero_signup_btn"):
+            success, msg = signup_user(email, password)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+    elif auth_mode == "Log In":
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pw")
+        if st.button("Log In", use_container_width=True, key="hero_login_btn"):
+            user = login_user(email, password)
+            if user:
+                st.session_state.user = user
+                st.success(f"Welcome, {user.get('email','')}!")
                 st.rerun()
-            return
-        elif auth_mode == "Sign Up":
-            first_name = st.text_input("First Name", key="signup_first_name")
-            last_name = st.text_input("Last Name", key="signup_last_name")
-            email = st.text_input("Email", key="signup_email")
-            password = st.text_input("Password", type="password", key="signup_pw")
-            password2 = st.text_input("Confirm Password", type="password", key="signup_pw2")
-            if st.button("Sign Up", use_container_width=True):
-                if not first_name or not last_name or not email or not password:
-                    st.error("All fields are required.")
-                elif password != password2:
-                    st.error("Passwords do not match.")
-                else:
-                    ok, msg = signup_user(email, password, first_name, last_name)
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
-            return
-        elif auth_mode == "Log In":
-            email = st.text_input("Email", key="login_email")
-            password = st.text_input("Password", type="password", key="login_pw")
-            if st.button("Log In", use_container_width=True):
-                user = login_user(email, password)
-                if user:
-                    st.session_state.user = user
-                    st.success(f"Welcome, {user['email']}!")
-                    st.rerun()
-                else:
-                    st.error("Invalid credentials.")
-            if st.button("Forgot Password?", key="forgot_pw_btn"):
-                reset_email = st.text_input("Enter your registered email to reset password:", key="reset_email")
-                new_pw = st.text_input("New Password", type="password", key="reset_pw")
-                if st.button("Reset Password", key="reset_pw_btn"):
-                    # Demo: just update password if email exists
-                    conn = get_db()
-                    cur = conn.execute("SELECT id FROM users WHERE email=?", (reset_email,))
-                    if cur.fetchone():
-                        conn.execute("UPDATE users SET password_hash=? WHERE email=?", (hash_password(new_pw), reset_email))
-                        conn.commit()
-                        st.success("Password reset! Please log in with your new password.")
-                    else:
-                        st.error("Email not found.")
-                    conn.close()
-            return
+            else:
+                st.error("Invalid credentials.")
+    else:
+        st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
+        st.info("Continuing as guest. Some features may be limited.")
 
 if 'user' not in st.session_state:
     st.session_state.user = None
@@ -235,15 +241,15 @@ if user and user.get('role') == 'guest':
             if st.button("Sign Up / Log In", key="guest_signup_sidebar"):
                 st.session_state.user = None
                 st.rerun()
-    st.markdown("""
+    guest_extra = "<b>Sign up or log in</b> to unlock your personal dashboard, save progress, and access your books anytime, anywhere.<br>" if not KIOSK_MODE else ""
+    st.markdown(f"""
 <div style='background:linear-gradient(90deg,#ffb6b9 0%,#fae3d9 100%);padding:16px 0 16px 0;text-align:center;border-radius:12px;margin-bottom:18px;border:2px solid #ee9ca7;'>
     <span style='font-size:20px;color:#b91372;font-family:Georgia,serif;font-weight:bold;'>
         You are using SoulVest LoveBook as a <span style='color:#ee9ca7;'>Guest</span>.<br>
         <span style='font-size:16px;font-weight:normal;'>
             <b>Privacy for all:</b> Your memories are always private and never shared.<br>
-            <b>Guest mode:</b> You can create a book, but you won’t be able to resume or access it from other devices.<br>
-            """ + ("<b>Sign up or log in</b> to unlock your personal dashboard, save progress, and access your books anytime, anywhere.<br>" if not KIOSK_MODE else "") + """
-            <span style='color:#b91372;text-decoration:underline;'>No spam, no ads, just your story—always secure.</span>
+            <b>Guest mode:</b> You can create a book, but you won\'t be able to resume or access it from other devices.<br>
+            {guest_extra}<span style='color:#b91372;text-decoration:underline;'>No spam, no ads, just your story—always secure.</span>
         </span>
     </span>
 </div>
