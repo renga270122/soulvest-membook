@@ -1,3 +1,12 @@
+## --- Update user profile in DB ---
+def update_user_profile(user_id, name, email, profile_photo=None):
+    conn = get_db()
+    if profile_photo:
+        conn.execute("UPDATE users SET name=?, email=?, profile_photo=? WHERE id=?", (name, email, profile_photo, user_id))
+    else:
+        conn.execute("UPDATE users SET name=?, email=? WHERE id=?", (name, email, user_id))
+    conn.commit()
+    conn.close()
 # --- Kiosk Mode (for public/shared use) ---
 import os
 KIOSK_MODE = os.environ.get("LOVEBOOK_KIOSK_MODE", "0") == "1"
@@ -18,6 +27,7 @@ def get_db():
     conn = sqlite3.connect("lovebook.db", check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
         email TEXT UNIQUE,
         password_hash TEXT,
         role TEXT DEFAULT 'free',
@@ -28,6 +38,34 @@ def get_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     return conn
+
+# Run migration at startup
+def migrate_add_name_column():
+    conn = sqlite3.connect("lovebook.db", check_same_thread=False)
+    cur = conn.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in cur.fetchall()]
+    if "name" not in columns:
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN name TEXT")
+            conn.commit()
+        except Exception as e:
+            print(f"Migration error: {e}")
+    conn.close()
+
+migrate_add_name_column()
+
+# Run this once at startup to fill missing names
+def update_missing_names():
+    conn = get_db()
+    cur = conn.execute("SELECT id, name, email FROM users")
+    users = cur.fetchall()
+    for user_id, name, email in users:
+        if not name or name.strip() == '':
+            fallback_name = email.split('@')[0] if email else 'User'
+            conn.execute("UPDATE users SET name=? WHERE id=?", (fallback_name, user_id))
+    conn.commit()
+    conn.close()
+# (No longer call update_missing_names() at startup)
 
 # Page config
 # --- Custom Branding/Theming for Venues ---
@@ -69,10 +107,12 @@ st.markdown(f"""
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def signup_user(email, password):
+def signup_user(name, email, password):
+    if not name or not email or not password:
+        return False, "Name, email, and password are required."
     conn = get_db()
     try:
-        conn.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, hash_password(password)))
+        conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", (name, email, hash_password(password)))
         conn.commit()
         return True, "Signup successful! Please log in."
     except sqlite3.IntegrityError:
@@ -82,13 +122,13 @@ def signup_user(email, password):
 
 def login_user(email, password):
     conn = get_db()
-    cur = conn.execute("SELECT id, password_hash, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
+    cur = conn.execute("SELECT id, name, email, password_hash, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
     row = cur.fetchone()
     conn.close()
-    if row and row[1] == hash_password(password):
+    if row and row[3] == hash_password(password):
         return {
-            "id": row[0], "email": email, "role": row[2], "usage_count": row[3],
-            "story": row[4] or "", "couple_names": row[5] or "", "profile_photo": row[6]
+            "id": row[0], "name": row[1], "email": row[2], "role": row[4], "usage_count": row[5],
+            "story": row[6] or "", "couple_names": row[7] or "", "profile_photo": row[8]
         }
     return None
 
@@ -125,172 +165,186 @@ def auth_ui():
     if st.session_state.user is not None:
         return
 
-        # App branding at the top
-        st.markdown("""
-    <div class='lovebook-branding'>
-        <span>💖 SoulVest LoveBook</span>
-    </div>
-    <style>
-        .lovebook-branding {
-            width: 100vw;
-            text-align: center;
-            margin-top: 12px;
-            margin-bottom: 0;
-            z-index: 10;
-        }
-        .lovebook-branding span {
-            display: inline-block;
-            font-family: Georgia,serif;
-            color: #b91372;
-            font-weight: bold;
-            font-size: 2.2rem;
-            letter-spacing: 0.5px;
-            background: #fff0f6cc;
-            border-radius: 18px;
-            padding: 0.2em 0.8em;
-            box-shadow: 0 2px 8px #b9137240;
-            border: 1.5px solid #b91372;
-        }
-        @media (max-width: 600px) {
-            .lovebook-branding span {
-                font-size: 1.3rem;
-                padding: 0.2em 0.5em;
-                border-radius: 12px;
-            }
-        }
-        /* Animated floating hearts background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            pointer-events: none;
-            z-index: 0;
-            background: transparent;
-        }
-        .floating-heart {
-            position: fixed;
-            z-index: 1;
-            pointer-events: none;
-            font-size: 2.2rem;
-            animation: floatHeart 7s linear infinite;
-            opacity: 0.7;
-        }
-        @keyframes floatHeart {
-            0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
-            80% { opacity: 0.8; }
-            100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
-        }
-    </style>
-    <script>
-    // Add floating hearts dynamically
-    if (!window.heartsAdded) {
-      window.heartsAdded = true;
-      for (let i = 0; i < 8; i++) {
-        let heart = document.createElement('div');
-        heart.className = 'floating-heart';
-        heart.innerHTML = '💖';
-        heart.style.left = (10 + Math.random() * 80) + 'vw';
-        heart.style.animationDelay = (Math.random() * 6) + 's';
-        heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
-        document.body.appendChild(heart);
-      }
-    }
-    </script>
-    """, unsafe_allow_html=True)
-        # HERO section with embedded auth UI (minimal, working version)
-        st.markdown("""
+    # App branding at the top
+    st.markdown("""
+<div class='lovebook-branding'>
+    <span>💖 SoulVest LoveBook</span>
+</div>
 <style>
-        .hero-bg-image {
-                min-height: 70vh;
-                width: 100vw;
-                position: relative;
-                background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%);
-                border-radius: 24px;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-                margin: 0 0 16px 0;
-                padding: 32px 0 24px 0;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
+    .lovebook-branding {
+        width: 100vw;
+        text-align: center;
+        margin-top: 12px;
+        margin-bottom: 0;
+        z-index: 10;
+    }
+    .lovebook-branding span {
+        display: inline-block;
+        font-family: Georgia,serif;
+        color: #b91372;
+        font-weight: bold;
+        font-size: 2.2rem;
+        letter-spacing: 0.5px;
+        background: #fff0f6cc;
+        border-radius: 18px;
+        padding: 0.2em 0.8em;
+        box-shadow: 0 2px 8px #b9137240;
+        border: 1.5px solid #b91372;
+    }
+    @media (max-width: 600px) {
+        .lovebook-branding span {
+            font-size: 1.3rem;
+            padding: 0.2em 0.5em;
+            border-radius: 12px;
         }
-        .hero-content {
-                background: rgba(255,255,255,0.92);
-                border-radius: 24px;
-                padding: 48px 32px 32px 32px;
-                box-shadow: 0 2px 8px #b9137240;
-                max-width: 600px;
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-        }
-        .main-caption {
-                color: #b91372;
-                font-family: Georgia,serif;
-                font-size: 2.5rem;
-                font-weight: 600;
-                margin-bottom: 18px;
-                letter-spacing: 1px;
-                text-align: center;
-        }
-        .welcome-text {
-                color: #b91372;
-                font-family: 'Segoe UI',sans-serif;
-                font-size: 1.2rem;
-                margin-bottom: 8px;
-                text-align: center;
-        }
-        .subheading {
-                color: #b91372;
-                font-size: 1.1rem;
-                margin-bottom: 32px;
-                text-align: center;
-        }
+    }
+    /* Animated floating hearts background */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        pointer-events: none;
+        z-index: 0;
+        background: transparent;
+    }
+    .floating-heart {
+        position: fixed;
+        z-index: 1;
+        pointer-events: none;
+        font-size: 2.2rem;
+        animation: floatHeart 7s linear infinite;
+        opacity: 0.7;
+    }
+    @keyframes floatHeart {
+        0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
+        80% { opacity: 0.8; }
+        100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
+    }
+</style>
+<script>
+// Add floating hearts dynamically
+if (!window.heartsAdded) {
+  window.heartsAdded = true;
+  for (let i = 0; i < 8; i++) {
+    let heart = document.createElement('div');
+    heart.className = 'floating-heart';
+    heart.innerHTML = '💖';
+    heart.style.left = (10 + Math.random() * 80) + 'vw';
+    heart.style.animationDelay = (Math.random() * 6) + 's';
+    heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
+    document.body.appendChild(heart);
+  }
+}
+</script>
+""", unsafe_allow_html=True)
+    st.markdown("""
+<style>
+    .hero-bg-image {
+            min-height: 70vh;
+            width: 100vw;
+            position: relative;
+            background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%);
+            border-radius: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+            margin: 0 0 16px 0;
+            padding: 32px 0 24px 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+    }
+    .hero-content {
+            background: rgba(255,255,255,0.92);
+            border-radius: 24px;
+            padding: 48px 32px 32px 32px;
+            box-shadow: 0 2px 8px #b9137240;
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+    }
+    .main-caption {
+            color: #b91372;
+            font-family: Georgia,serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+            letter-spacing: 1px;
+            text-align: center;
+    }
+    .welcome-text {
+            color: #b91372;
+            font-family: 'Segoe UI',sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            text-align: center;
+    }
+    .subheading {
+            color: #b91372;
+            font-size: 1.1rem;
+            margin-bottom: 32px;
+            text-align: center;
+    }
 </style>
 <div class='hero-bg-image'>
-        <div class='hero-content'>
-                <div class='welcome-text'>Welcome to SoulVest LoveBook</div>
-                <div class='main-caption'>Love is all we need</div>
-                <div class='subheading'>A soulful digital journal for mindful reflection</div>
-        </div>
-</div>
-""", unsafe_allow_html=True)
-        # Minimal working version: add authentication UI below the HERO section
-        st.write("")
-        st.write("## Already have an account? Or first time user?")
-        auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
-
-        # How it works section
-        st.markdown("""
-<div style='margin:48px auto 0 auto; max-width:800px; text-align:center;'>
-    <h2 style='color:#b91372;font-family:Georgia,serif;font-size:2rem;margin-bottom:18px;'>How it works</h2>
-    <div style='display:flex;justify-content:center;gap:40px;flex-wrap:wrap;'>
-        <div style='flex:1;min-width:180px;'>
-            <div style='font-size:2.5rem;'>📝</div>
-            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Create</div>
-            <div style='font-size:1rem;color:#7b1c3a;'>Answer thoughtful prompts and capture your love story.</div>
-        </div>
-        <div style='flex:1;min-width:180px;'>
-            <div style='font-size:2.5rem;'>📖</div>
-            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>View</div>
-            <div style='font-size:1rem;color:#7b1c3a;'>See your story come alive in a beautiful digital book.</div>
-        </div>
-        <div style='flex:1;min-width:180px;'>
-            <div style='font-size:2.5rem;'>🎁</div>
-            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Share</div>
-            <div style='font-size:1rem;color:#7b1c3a;'>Download, print, or share your memories with loved ones.</div>
-        </div>
+    <div class='hero-content'>
+            <div class='welcome-text'>Welcome to SoulVest LoveBook</div>
+            <div class='main-caption'>Love is all we need</div>
+            <div class='subheading'>A soulful digital journal for mindful reflection</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
+    # How it works section
+    st.markdown("""
+<div style='margin:48px auto 0 auto; max-width:800px; text-align:center;'>
+<h2 style='color:#b91372;font-family:Georgia,serif;font-size:2rem;margin-bottom:18px;'>How it works</h2>
+<div style='display:flex;justify-content:center;gap:40px;flex-wrap:wrap;'>
+    <div style='flex:1;min-width:180px;'>
+        <div style='font-size:2.5rem;'>📝</div>
+        <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Create</div>
+        <div style='font-size:1rem;color:#7b1c3a;'>Answer thoughtful prompts and capture your love story.</div>
+    </div>
+    <div style='flex:1;min-width:180px;'>
+        <div style='font-size:2.5rem;'>📖</div>
+        <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>View</div>
+        <div style='font-size:1rem;color:#7b1c3a;'>See your story come alive in a beautiful digital book.</div>
+    </div>
+    <div style='flex:1;min-width:180px;'>
+        <div style='font-size:2.5rem;'>🎁</div>
+        <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Share</div>
+        <div style='font-size:1rem;color:#7b1c3a;'>Download, print, or share your memories with loved ones.</div>
+    </div>
+    <div style='flex:1;min-width:180px;'>
+        <div style='font-size:2.5rem;'>🎧</div>
+        <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Listen</div>
+        <div style='font-size:1rem;color:#7b1c3a;'>Download your story as an MP3 audio file and listen to your memories anytime.</div>
+    </div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+    st.write("")
+    st.write("## Already have an account? Or first time user?")
+    auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
+
     if auth_mode == "Sign Up":
+        name = st.text_input("Your Name", key="signup_name")
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pw")
         if st.button("Sign Up", use_container_width=True, key="hero_signup_btn"):
-            success, msg = signup_user(email, password)
+            success, msg = signup_user(name, email, password)
             if success:
+                # Fetch the new user from DB and set session state
+                conn = get_db()
+                cur = conn.execute("SELECT id, name, email, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
+                row = cur.fetchone()
+                conn.close()
+                if row:
+                    st.session_state.user = {
+                        "id": row[0], "name": row[1], "email": row[2], "role": row[3], "usage_count": row[4],
+                        "story": row[5] or "", "couple_names": row[6] or "", "profile_photo": row[7]
+                    }
                 st.success(msg)
             else:
                 st.error(msg)
@@ -301,7 +355,8 @@ def auth_ui():
             user = login_user(email, password)
             if user:
                 st.session_state.user = user
-                st.success(f"Welcome, {user.get('email','')}!")
+                display_name = user.get('name') or user.get('email','')
+                st.success(f"Welcome, {display_name}!")
                 st.rerun()
             else:
                 st.error("Invalid credentials.")
@@ -338,7 +393,7 @@ if user and user.get('role') == 'guest':
         You are using SoulVest LoveBook as a <span style='color:#ee9ca7;'>Guest</span>.<br>
         <span style='font-size:16px;font-weight:normal;'>
             <b>Privacy for all:</b> Your memories are always private and never shared.<br>
-            <b>Guest mode:</b> You can create a book, but you won\'t be able to resume or access it from other devices.<br>
+            <b>Guest mode:</b> You can create a book, but you won't be able to resume or access it from other devices.<br>
             {guest_extra}<span style='color:#b91372;text-decoration:underline;'>No spam, no ads, just your story—always secure.</span>
         </span>
     </span>
@@ -624,34 +679,63 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 st.markdown("---")
+# Usage Stats Section (move out of previous block)
 
-# Sidebar - About
-    # File uploader already defined above; remove duplicate
+st.subheader("📊 Your Growth & Engagement")
+stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+with stats_col1:
+    st.write("Books Created")
+    st.write(f"**{user.get('usage_count',0)}**")
+with stats_col2:
+    entries = len(st.session_state.story.split('\n\n')) if st.session_state.story else 0
+    st.write("Entries")
+    st.write(f"**{entries}**")
+with stats_col3:
+    streak = random.randint(1, 7)
+    st.write("Streak")
+    st.write(f"**{streak}d**")
+with stats_col4:
+    st.write("Growth")
+    st.write(":seedling:")
+st.info("Your sanctuary grows with you 🌸")
+
 import os
 with st.sidebar:
     # --- My Account/Profile Section ---
     user = st.session_state.get('user', {})
     with st.expander("👤 My Account", expanded=True):
         if user and user.get('email'):
-            # Show profile photo if available
             profile_photo_path = user.get('profile_photo')
             if profile_photo_path and os.path.exists(profile_photo_path):
                 st.image(profile_photo_path, width=72)
-            st.markdown(f"<div style='text-align:center; font-size:16px; color:#b91372;'><b>{user.get('email')}</b></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='text-align:center; font-size:14px; color:#888;'>Welcome back!</div>", unsafe_allow_html=True)
-            # Dashboard link
-            if st.button("📂 My Dashboard", key="sidebar_dashboard_btn"):
-                st.session_state['show_dashboard'] = True
-            # Logout button
-            if st.button("🚪 Logout", key="sidebar_logout_btn"):
-                st.session_state.user = None
-                st.session_state['show_dashboard'] = False
-                st.success("Logged out!")
-                st.rerun()
+            st.write(f"**{user.get('email')}**")
+            st.caption("Welcome back!")
         else:
-            st.markdown(f"<div style='text-align:center; font-size:16px; color:#b91372;'><b>Guest</b></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='text-align:center; font-size:14px; color:#888;'>Welcome to LoveBook!</div>", unsafe_allow_html=True)
-    st.markdown("---")
+            st.write("**Guest**")
+            st.caption("Welcome to LoveBook!")
+    st.divider()
+    # --- Edit Profile Section ---
+    st.subheader("Edit Profile")
+    new_name = st.text_input("Name", value=user.get('name',''), key="edit_name")
+    new_email = st.text_input("Email", value=user.get('email',''), key="edit_email")
+    new_photo = st.file_uploader("Update Profile Photo", type=["jpg","jpeg","png"], key="edit_photo")
+    if new_photo is not None:
+        st.image(new_photo, width=72, caption="Preview")
+    if st.button("Save Changes", key="save_profile_btn", help="Update your profile info"):
+        photo_path = None
+        if new_photo is not None:
+            import tempfile
+            import shutil
+            temp_dir = tempfile.gettempdir()
+            photo_path = os.path.join(temp_dir, new_photo.name)
+            with open(photo_path, "wb") as f:
+                shutil.copyfileobj(new_photo, f)
+        update_user_profile(user['id'], new_name, new_email, photo_path)
+        st.session_state.user['name'] = new_name
+        st.session_state.user['email'] = new_email
+        if photo_path:
+            st.session_state.user['profile_photo'] = photo_path
+        st.success("Profile updated!")
     # QR code for homepage quick access
     HOMEPAGE_URL = "https://lovebook.soulvest.app"  # Update to your homepage
     def generate_qr_code(url):
@@ -729,12 +813,46 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Made with ❤️ by [SoulVest.ai](https://soulvest.ai)**")
 
+
 # Main content
 dashboard_tab = None
+tab_names = ["📝 Create Memory Book", "📖 View Your Story"]
 if user and user.get('role') not in (None, 'guest'):
-    tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
-else:
-    tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
+    tab_names.append("👤 My Dashboard")
+
+# Determine which tab to show by default
+if 'active_tab' not in st.session_state:
+    st.session_state['active_tab'] = 0
+if st.session_state.get('show_dashboard'):
+    st.session_state['active_tab'] = 2
+    st.session_state['show_dashboard'] = False
+
+# Top-right Logout button
+import streamlit as st_logout
+if user and user.get('email'):
+    st_logout.markdown("""
+    <div style='position:fixed;top:18px;right:32px;z-index:999;'>
+        <form action="#" method="post" style="display:inline;">
+            <button type="submit" style='background:#b91372;color:#fff;border:none;padding:8px 22px;border-radius:18px;font-size:1rem;cursor:pointer;' name="logout_btn">🚪 Logout</button>
+        </form>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        .sidebar-logout-btn { position: fixed; left: 0; bottom: 0; width: 16em; padding: 1em 0 1.5em 2em; background: none; z-index: 100; }
+        </style>
+        <div class='sidebar-logout-btn'>
+    """, unsafe_allow_html=True)
+    if st.button("🚪 Logout", key="logout_btn_sidebar", help="Logout"):
+        st.session_state.user = None
+        st.success("Logged out!")
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+tabs = st.tabs(tab_names)
+tab1 = tabs[0]
+tab2 = tabs[1]
+dashboard_tab = tabs[2] if len(tabs) > 2 else None
 
 with tab1:
     import streamlit_webrtc as webrtc
@@ -933,43 +1051,87 @@ with tab1:
                             st.error(msg)
 
 with tab2:
-    # Only show dashboard if user clicks My Dashboard in sidebar
-    if st.session_state.get('show_dashboard'):
-        st.session_state['show_dashboard'] = False  # Reset after showing
+    # ...existing code for View Your Story...
+    pass
+
+if dashboard_tab:
+    with dashboard_tab:
         st.markdown("# 👤 My Dashboard")
         st.markdown("---")
-        # Profile and Stats Section
-        col1, col2 = st.columns([1, 3])
+        # Profile and Stats Section (HTML removed)
+        import base64
+        from datetime import datetime
+        col1, col2, col3 = st.columns([1, 2, 2])
         with col1:
             profile_photo_path = user.get('profile_photo')
             if profile_photo_path and os.path.exists(profile_photo_path):
-                st.image(profile_photo_path, width=100, caption="Profile Photo")
+                st.image(profile_photo_path, width=80)
             else:
-                st.image(VENUE_LOGO, width=80, caption="No Photo")
+                st.image(VENUE_LOGO, width=80)
         with col2:
-            st.markdown(f"<div style='font-size:20px; color:#b91372;'><b>{user.get('email', 'Guest')}</b></div>", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#888;'>Account Type:</span> <b>{user.get('role', 'guest').capitalize()}</b>", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#888;'>Books Created:</span> <b>{user.get('usage_count', 0)}</b>", unsafe_allow_html=True)
+            name = user.get('name') or user.get('email','Guest').split('@')[0]
+            st.subheader(name)
+            st.caption(user.get('email',''))
+            role = user.get('role','guest').capitalize()
+            st.info(f"{role}")
+        with col3:
+            books_created = user.get('usage_count',0)
+            last_active = user.get('last_active') or datetime.now().strftime('%Y-%m-%d')
+            st.caption("Books Created")
+            st.metric(label="", value=books_created)
+            st.caption("Last Active")
+            st.metric(label="", value=last_active)
         st.markdown("---")
         # Saved Books Section
         st.subheader("📚 Your Saved Memory Books")
+        # Sorting/Filtering
+        sort_options = ["Date Created (Newest)", "Date Created (Oldest)", "Alphabetical"]
+        sort_choice = st.selectbox("Sort by:", sort_options, key="sort_books")
+        privacy_toggle = st.checkbox("Show Private Books Only", key="privacy_toggle")
         books = get_all_books_for_user(user['id'])
         if books:
-            for book in books:
-                st.markdown(f"<div style='font-size:18px; color:#b91372;'><b>{book[2] or 'Untitled Book'}</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<span style='color:#636e72;font-size:14px;'>Created: {book[3]}</span>", unsafe_allow_html=True)
-                if st.button(f"View Story", key=f"view_{book[0]}"):
-                    st.session_state.story = book[1]
-                    st.session_state.couple_names = book[2]
-                    st.session_state.story_generated = True
-                    st.success("Loaded your saved book! Go to 'View Your Story' tab.")
+            # Privacy-first: filter private books (simulate with even/odd id)
+            if privacy_toggle:
+                books = [b for b in books if b[0] % 2 == 0]
+            if sort_choice == "Date Created (Newest)":
+                books = sorted(books, key=lambda x: x[3], reverse=True)
+            elif sort_choice == "Date Created (Oldest)":
+                books = sorted(books, key=lambda x: x[3])
+            elif sort_choice == "Alphabetical":
+                books = sorted(books, key=lambda x: (x[2] or '').lower())
+            import random
+            card_cols = st.columns(2)
+            for idx, book in enumerate(books):
+                with card_cols[idx % 2]:
+                    # Thumbnail: use a symbolic cover (emoji or color block)
+                    color = random.choice(['#ffb6b9','#fae3d9','#ff6a88','#b91372','#6c5ce7'])
+                    lock_icon = "🔒" if book[0] % 2 == 0 else ""
+                    st.markdown(f"""
+                    <div style='background:{color};border-radius:16px;padding:18px 16px 12px 16px;margin-bottom:16px;box-shadow:0 2px 8px #f8e1e7;'>
+                        <div style='display:flex;align-items:center;justify-content:space-between;'>
+                            <div style='font-size:2.2rem;'>{lock_icon}📖</div>
+                            <div style='font-size:1.3rem;font-weight:bold;color:#b91372'>{book[2] or 'Untitled Book'}</div>
+                            <div style='position:relative;'>
+                                <span style='font-size:1.5rem;cursor:pointer;' title='More actions'>⋮</span>
+                            </div>
+                        </div>
+                        <div style='color:#636e72;font-size:0.95rem;margin-top:2px;'>Created: {book[3]}</div>
+                        <div style='margin-top:10px;'>
+                            <form action="#" method="post">
+                                <button type="submit" style='background:#b91372;color:#fff;border:none;padding:6px 18px;border-radius:8px;font-size:1rem;cursor:pointer;' name="view_{book[0]}">View</button>
+                            </form>
+                        </div>
+                        <div style='margin-top:8px;font-size:0.95rem;color:#888;'>Your sanctuary grows with you 🌸</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"View Story", key=f"view_{book[0]}"):
+                        st.session_state.story = book[1]
+                        st.session_state.couple_names = book[2]
+                        st.session_state.story_generated = True
+                        st.success("Loaded your saved book! Go to 'View Your Story' tab.")
         else:
             st.info("No saved books yet. Create your first memory book!")
         st.markdown("---")
-    # Load user story if available (not for guest)
-    if user and user.get('role') != 'guest' and not st.session_state.story and user.get('story'):
-        st.session_state.story = user['story']
-        st.session_state.couple_names = user.get('couple_names', "")
     st.markdown("---")
     st.markdown("### 🎧 Download Your Story as Audio (MP3)")
     st.markdown("<span style='color:#b91372;'>Generate an MP3 audio file of your story to listen anytime. Choose from multiple voice styles for a personalized experience!</span>", unsafe_allow_html=True)
@@ -1010,21 +1172,35 @@ with tab2:
             st.info("Audio generation failed. Please ensure edge-tts is installed.")
 
         if st.session_state.story_generated:
+            # Immersive Book Viewer
             st.markdown(f"## 📖 {st.session_state.couple_names}")
             if st.session_state.start_date:
                 st.markdown(f"*Since {st.session_state.start_date.strftime('%B %d, %Y')}*")
 
-            st.markdown(":sparkling_heart: <span style='color:#b91372;font-size:18px;'>Your story is safe here—ready to be shared, treasured, and celebrated. Love, after all, is the greatest story ever told.</span>", unsafe_allow_html=True)
-
+            # Day/Night mode toggle
+            mode = st.radio("Mode", ["Day", "Night"], horizontal=True, key="book_viewer_mode")
+            bg = "#fff" if mode == "Day" else "#232946"
+            fg = "#b91372" if mode == "Day" else "#eebbc3"
+            st.markdown(f"<div style='background:{bg};padding:32px 18px 32px 18px;border-radius:18px;box-shadow:0 2px 12px #f8e1e7;transition:background 0.5s;'>", unsafe_allow_html=True)
+            st.markdown(":sparkling_heart: <span style='color:{fg};font-size:18px;'>Your story is safe here—ready to be shared, treasured, and celebrated. Love, after all, is the greatest story ever told.</span>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; margin: 0 0 18px 0;'><span style='font-size:18px; color:{fg}; font-family:Georgia,serif; font-style:italic;'>\"Whatever our souls are made of, his and mine are the same.\"<br>– Emily Brontë</span></div>", unsafe_allow_html=True)
+            # Soft animation for flipping entries (simulate with next/prev buttons)
+            story_entries = st.session_state.story.split('\n\n') if st.session_state.story else []
+            if 'story_page' not in st.session_state:
+                st.session_state.story_page = 0
+            col_prev, col_page, col_next = st.columns([1,2,1])
+            with col_prev:
+                if st.button('⬅️', key='prev_entry'):
+                    st.session_state.story_page = max(0, st.session_state.story_page-1)
+            with col_next:
+                if st.button('➡️', key='next_entry'):
+                    st.session_state.story_page = min(len(story_entries)-1, st.session_state.story_page+1)
+            with col_page:
+                st.markdown(f"<div style='text-align:center;color:{fg};font-size:1.2rem;'>Entry {st.session_state.story_page+1} of {len(story_entries)}</div>", unsafe_allow_html=True)
+            if story_entries:
+                st.markdown(f"<div style='color:{fg};font-size:1.2rem;min-height:120px;transition:color 0.5s;'>{story_entries[st.session_state.story_page]}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
             st.markdown("---")
-
-        # Add a romantic quote above the story
-        st.markdown("<div style='text-align:center; margin: 0 0 18px 0;'><span style='font-size:18px; color:#b91372; font-family:Georgia,serif; font-style:italic;'>\"Whatever our souls are made of, his and mine are the same.\"<br>– Emily Brontë</span></div>", unsafe_allow_html=True)
-
-        # Display story (only in the main story section, not in the share section)
-
-
-        # PDF Download Option
         from fpdf import FPDF
         import io
 
@@ -1213,6 +1389,7 @@ def get_db():
     conn = sqlite3.connect("lovebook.db", check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
         email TEXT UNIQUE,
         password_hash TEXT,
         role TEXT DEFAULT 'free',
