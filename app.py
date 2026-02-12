@@ -2,21 +2,206 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
 import base64
+import sqlite3
+import hashlib
+import uuid
 
 # Page config
 st.set_page_config(
-    page_title="SoulVest LoveBook 💖",
-    page_icon="💖",
-    layout="wide"
+        page_title="SoulVest LoveBook 💖 | The Original Digital Memory Book",
+        page_icon="💖",
+        layout="wide"
 )
 
+# --- Google Analytics (gtag.js) ---
+st.markdown("""
+<script async src='https://www.googletagmanager.com/gtag/js?id=G-75ZF3726F6'></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-75ZF3726F6');
+</script>
+""", unsafe_allow_html=True)
+
 # --- Session State Initialization ---
+# --- SQLite Setup ---
+DB_PATH = "users.db"
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT DEFAULT 'free',
+        usage_count INTEGER DEFAULT 0,
+        story TEXT,
+        couple_names TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    return conn
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def signup_user(email, password):
+    conn = get_db()
+    try:
+        conn.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, hash_password(password)))
+        conn.commit()
+        return True, "Signup successful! Please log in."
+    except sqlite3.IntegrityError:
+        return False, "Email already registered."
+    finally:
+        conn.close()
+
+def login_user(email, password):
+    conn = get_db()
+    cur = conn.execute("SELECT id, password_hash, role, usage_count, story, couple_names FROM users WHERE email=?", (email,))
+    row = cur.fetchone()
+    conn.close()
+    if row and row[1] == hash_password(password):
+        return {
+            "id": row[0], "email": email, "role": row[2], "usage_count": row[3],
+            "story": row[4] or "", "couple_names": row[5] or ""
+        }
+    return None
+
+def save_user_progress(user_id, story, couple_names):
+    conn = get_db()
+    conn.execute("UPDATE users SET story=?, couple_names=?, usage_count=usage_count+1 WHERE id=?", (story, couple_names, user_id))
+    conn.commit()
+    conn.close()
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    cur = conn.execute("SELECT id, email, role, usage_count, story, couple_names FROM users WHERE id=?", (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        return {
+            "id": row[0], "email": row[1], "role": row[2], "usage_count": row[3],
+            "story": row[4] or "", "couple_names": row[5] or ""
+        }
+    return None
+
+# --- Auth UI ---
+
+# --- Auth UI with Guest Option ---
+
+# --- Welcome Screen & Auth UI with Guest Option ---
+def auth_ui():
+    st.markdown("""
+    <div style='text-align:center;margin-top:32px;margin-bottom:32px;'>
+        <img src='https://img.icons8.com/emoji/96/000000/red-heart.png' width='72' style='margin-bottom:12px;'>
+        <h1 style='color:#b91372;font-family:Georgia,serif;'>Welcome to SoulVest LoveBook 💖</h1>
+        <p style='font-size:20px;color:#b91372;font-family:Georgia,serif;'>
+            Create, cherish, and share your love story.<br>
+            <b>Continue as Guest</b> for a quick start, or <b>Sign Up / Log In</b> to save and resume your memories.<br>
+            <span style='color:#ee9ca7;'>Your privacy is our priority. No spam, ever.</span>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        auth_mode = st.radio("Choose how to continue:", ["Continue as Guest", "Sign Up", "Log In"])
+        if auth_mode == "Continue as Guest":
+            if st.button("Continue as Guest", use_container_width=True):
+                st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
+                st.success("Continuing as guest. Data will not be saved.")
+                st.experimental_rerun()
+            st.info("As a guest, your data will not be saved and you cannot resume later. Sign up for more features!")
+            return
+        elif auth_mode == "Sign Up":
+            email = st.text_input("Email", key="signup_email")
+            password = st.text_input("Password", type="password", key="signup_pw")
+            password2 = st.text_input("Confirm Password", type="password", key="signup_pw2")
+            if st.button("Sign Up", use_container_width=True):
+                if not email or not password:
+                    st.error("Email and password required.")
+                elif password != password2:
+                    st.error("Passwords do not match.")
+                else:
+                    ok, msg = signup_user(email, password)
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+            return
+        elif auth_mode == "Log In":
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_pw")
+            if st.button("Log In", use_container_width=True):
+                user = login_user(email, password)
+                if user:
+                    st.session_state.user = user
+                    st.success(f"Welcome, {user['email']}!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Invalid credentials.")
+            if st.button("Forgot Password?", key="forgot_pw_btn"):
+                reset_email = st.text_input("Enter your registered email to reset password:", key="reset_email")
+                new_pw = st.text_input("New Password", type="password", key="reset_pw")
+                if st.button("Reset Password", key="reset_pw_btn"):
+                    # Demo: just update password if email exists
+                    conn = get_db()
+                    cur = conn.execute("SELECT id FROM users WHERE email=?", (reset_email,))
+                    if cur.fetchone():
+                        conn.execute("UPDATE users SET password_hash=? WHERE email=?", (hash_password(new_pw), reset_email))
+                        conn.commit()
+                        st.success("Password reset! Please log in with your new password.")
+                    else:
+                        st.error("Email not found.")
+                    conn.close()
+            return
+
+if 'user' not in st.session_state:
+    st.session_state.user = None
+auth_ui()
+user = st.session_state.user
+# --- Logout Button in Sidebar ---
+if user and user.get('role') not in (None, 'guest'):
+    with st.sidebar:
+        if st.button("Log Out", key="logout_btn", help="Sign out of your account"):
+            st.session_state.user = None
+            st.success("Logged out successfully.")
+            st.experimental_rerun()
+# --- User Dashboard Tab for Signed-in Users ---
+def get_all_books_for_user(user_id):
+    conn = get_db()
+    cur = conn.execute("SELECT id, story, couple_names, created_at FROM users WHERE id=?", (user_id,))
+    books = cur.fetchall()
+    conn.close()
+    return books
+
+
+# --- Persistent Guest Mode Banner ---
+if user and user.get('role') == 'guest':
+    st.markdown("""
+    <div style='background:linear-gradient(90deg,#ffb6b9 0%,#fae3d9 100%);padding:16px 0 16px 0;text-align:center;border-radius:12px;margin-bottom:18px;border:2px solid #ee9ca7;'>
+        <span style='font-size:20px;color:#b91372;font-family:Georgia,serif;font-weight:bold;'>
+            You are using SoulVest LoveBook as a <span style='color:#ee9ca7;'>Guest</span>.<br>
+            <span style='font-size:16px;font-weight:normal;'>Your data will not be saved and you cannot resume later. <a href='#' style='color:#b91372;text-decoration:underline;'>Sign up</a> for full features!</span>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
 if 'memories' not in st.session_state:
     st.session_state.memories = {}
 if 'story_generated' not in st.session_state:
     st.session_state.story_generated = False
 if 'start_date' not in st.session_state:
     st.session_state.start_date = None
+# Ensure story and couple_names are always initialized
+if 'story' not in st.session_state:
+    st.session_state.story = ""
+if 'couple_names' not in st.session_state:
+    st.session_state.couple_names = ""
+
+# Ensure story is always initialized
+if 'story' not in st.session_state:
+    st.session_state.story = ""
 
 
 # --- Image Upload for Background ---
@@ -24,19 +209,29 @@ uploaded_bg = None
 
 bg_css = """
 <style>
-        .sidebar-logo {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        .sidebar-logo img {
-            width: 120px;
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(255,0,100,0.3), 0 2px 8px rgba(0,0,0,0.15);
-            border: 2px solid #fff;
-            animation: heartbeat 1.5s infinite;
-        }
+    html {
+        font-size: 16px;
+    }
+    @media (max-width: 600px) {
+        html { font-size: 15px; }
+        .block-container { padding: 0.5rem !important; }
+        .stButton>button { font-size: 20px !important; padding: 16px 0 !important; width: 100% !important; }
+        .stTextArea textarea, .stTextInput input { font-size: 18px !important; }
+        h1, h2, h3, h4 { font-size: 1.3em !important; }
+    }
+    .sidebar-logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .sidebar-logo img {
+        width: 120px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(255,0,100,0.3), 0 2px 8px rgba(0,0,0,0.15);
+        border: 2px solid #fff;
+        animation: heartbeat 1.5s infinite;
+    }
     body {
         background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%) !important;
     }
@@ -65,6 +260,7 @@ bg_css = """
         font-family: 'Georgia', serif;
         font-weight: bold;
         box-shadow: 0 2px 8px rgba(255, 182, 193, 0.15);
+        transition: background 0.2s, box-shadow 0.2s;
     }
     .stButton>button:hover {
         background: linear-gradient(90deg, #fae3d9 0%, #ffb6b9 100%);
@@ -230,6 +426,9 @@ else:
 
 
 st.title("💖 SoulVest LoveBook")
+if not user:
+    st.warning("Please log in, sign up, or continue as guest to use the app.")
+    st.stop()
 st.markdown("""
 <div style='text-align:center;margin-top:24px;margin-bottom:8px;'>
     <span style='font-size:32px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
@@ -342,8 +541,44 @@ with st.sidebar:
 
 # Main content
 tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
+dashboard_tab = None
+if user and user.get('role') not in (None, 'guest'):
+    tab1, tab2, dashboard_tab = st.tabs(["📝 Create Memory Book", "📖 View Your Story", "📂 My Dashboard"])
+else:
+    tab1, tab2 = st.tabs(["📝 Create Memory Book", "📖 View Your Story"])
 
 with tab1:
+    import streamlit_webrtc as webrtc
+    import av
+    import queue
+    import threading
+    import speech_recognition as sr
+
+    class AudioProcessor:
+        def __init__(self):
+            self.q = queue.Queue()
+            self.result = ""
+            self.lock = threading.Lock()
+
+        def recv(self, frame):
+            audio = frame.to_ndarray()
+            self.q.put(audio)
+            return frame
+
+        def recognize(self):
+            recognizer = sr.Recognizer()
+            while not self.q.empty():
+                audio = self.q.get()
+                try:
+                    with sr.AudioFile(audio) as source:
+                        audio_data = recognizer.record(source)
+                        text = recognizer.recognize_google(audio_data)
+                        with self.lock:
+                            self.result += text + " "
+                except Exception:
+                    pass
+            return self.result
+
     # Ho'oponopono-inspired final touch
     st.markdown("---")
     st.markdown("### 🌺 Express from the Heart")
@@ -362,6 +597,7 @@ with tab1:
         ]
         for idx, (q, ph) in enumerate(quiz_questions):
             st.text_input(f"{idx+1}. {q}", placeholder=ph, key=f"quiz_{idx}")
+
     st.markdown("## Tell Us Your Story")
     uploaded_bg = st.file_uploader(
         "Upload your photo (optional)",
@@ -371,38 +607,40 @@ with tab1:
     )
     st.info("Uploading your photo is optional. If you choose to upload, your photo will be used as the background for your personalized memory book PDF. If you do not upload a photo, a beautiful default background will be used instead. Your photo is not shared or stored anywhere else.")
 
-
-    import tempfile
-    import asyncio
-    import edge_tts
-
-    def tts_audio(text):
-        try:
-            async def _gen():
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tts_fp:
-                    communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
-                    await communicate.save(tts_fp.name)
-                    return tts_fp.name
-            return asyncio.run(_gen())
-        except Exception:
-            return None
-
     col1, col2 = st.columns(2)
     with col1:
         st.write("Your Name")
-        if st.button("🔊", key="tts_p1"):
-            audio_file = tts_audio("Your Name")
-            if audio_file:
-                st.audio(audio_file, format='audio/mp3')
         person1_name = st.text_input("", key="p1", label_visibility="collapsed")
+        st.caption("Or use your microphone:")
+        audio_processor_name = AudioProcessor()
+        webrtc_streamer_name = webrtc.webrtc_streamer(
+            key="name_mic",
+            audio_processor_factory=lambda: audio_processor_name,
+            media_stream_constraints={"audio": True, "video": False},
+            async_processing=False,
+        )
+        if webrtc_streamer_name.state.playing:
+            st.info("Recording... Speak your name.")
+        if audio_processor_name.result:
+            st.session_state.p1 = audio_processor_name.result
+            person1_name = audio_processor_name.result
+
     with col2:
         st.write("Partner's Name")
-        if st.button("🔊", key="tts_p2"):
-            audio_file = tts_audio("Partner's Name")
-            if audio_file:
-                st.audio(audio_file, format='audio/mp3')
         person2_name = st.text_input("", key="p2", label_visibility="collapsed")
-
+        st.caption("Or use your microphone:")
+        audio_processor_partner = AudioProcessor()
+        webrtc_streamer_partner = webrtc.webrtc_streamer(
+            key="partner_mic",
+            audio_processor_factory=lambda: audio_processor_partner,
+            media_stream_constraints={"audio": True, "video": False},
+            async_processing=False,
+        )
+        if webrtc_streamer_partner.state.playing:
+            st.info("Recording... Speak your partner's name.")
+        if audio_processor_partner.result:
+            st.session_state.p2 = audio_processor_partner.result
+            person2_name = audio_processor_partner.result
 
     # Redesigned, engaging questions for harmony and reconciliation
     questions = [
@@ -422,10 +660,6 @@ with tab1:
     for idx, (q, ph, key, tip) in enumerate(questions):
         st.write(f"{idx+1}. {q}")
         st.caption(tip)
-        if st.button("🔊", key=f"tts_{key}"):
-            audio_file = tts_audio(q)
-            if audio_file:
-                st.audio(audio_file, format='audio/mp3')
         answers[key] = st.text_area(
             label=" ",
             placeholder=ph,
@@ -434,6 +668,28 @@ with tab1:
             label_visibility="collapsed",
             help=" "
         )
+        st.caption("Or use your microphone:")
+        audio_processor_ans = AudioProcessor()
+        webrtc_streamer_ans = webrtc.webrtc_streamer(
+            key=f"ans_mic_{key}",
+            audio_processor_factory=lambda: audio_processor_ans,
+            media_stream_constraints={"audio": True, "video": False},
+            async_processing=False,
+        )
+        if webrtc_streamer_ans.state.playing:
+            st.info("Recording... Speak your answer.")
+        if audio_processor_ans.result:
+            st.session_state[f"ans_{key}"] = audio_processor_ans.result
+            answers[key] = audio_processor_ans.result
+        # --- Autosave for signed-in users ---
+        if user and user.get('role') not in (None, 'guest'):
+            # Save partial progress (answers) as a draft story
+            partial_story = f"{st.session_state.get('p1','')} & {st.session_state.get('p2','')}'s Memory Book\n\n"
+            for jdx, (q2, ph2, key2, tip2) in enumerate(questions):
+                ans2 = st.session_state.get(f"ans_{key2}", '').strip()
+                if ans2:
+                    partial_story += f"Page {jdx+1}: {q2}\n\n{ans2}\n\n"
+            save_user_progress(user['id'], partial_story, f"{st.session_state.get('p1','')} & {st.session_state.get('p2','')}")
 
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
@@ -454,19 +710,107 @@ with tab1:
                     st.session_state.story = story
                     st.session_state.story_generated = True
                     st.session_state.couple_names = f"{person1_name} & {person2_name}"
+                    # Save to DB for persistence only if not guest
+                    if user and user.get('role') != 'guest':
+                        save_user_progress(user['id'], story, st.session_state.couple_names)
                     st.success("✨ Your memory book is ready!")
                     st.balloons()
                     st.info("Your story was crafted using your own beautiful memories and words. Go to the 'View Your Story' tab to see it and share the love!")
 
+        # --- Prompt guest to sign up after book ---
+        if user and user.get('role') == 'guest' and st.session_state.story_generated:
+            st.markdown("""
+            <div style='background:linear-gradient(90deg,#fae3d9 0%,#ffb6b9 100%);padding:18px 0 18px 0;text-align:center;border-radius:12px;margin:24px 0 18px 0;border:2px solid #ee9ca7;'>
+                <span style='font-size:20px;color:#b91372;font-family:Georgia,serif;font-weight:bold;'>
+                    Want to save and resume your story? <br>
+                    <span style='font-size:16px;font-weight:normal;'>Sign up now to create your free SoulVest LoveBook account!</span>
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            with st.expander("Sign Up for Free", expanded=True):
+                email = st.text_input("Email", key="guest_signup_email")
+                password = st.text_input("Password", type="password", key="guest_signup_pw")
+                password2 = st.text_input("Confirm Password", type="password", key="guest_signup_pw2")
+                if st.button("Sign Up & Save My Book", key="guest_signup_btn"):
+                    if not email or not password:
+                        st.error("Email and password required.")
+                    elif password != password2:
+                        st.error("Passwords do not match.")
+                    else:
+                        ok, msg = signup_user(email, password)
+                        if ok:
+                            st.success("Account created! Please log in to save and resume your book.")
+                        else:
+                            st.error(msg)
+
 with tab2:
-    if st.session_state.story_generated:
-        st.markdown(f"## 📖 {st.session_state.couple_names}")
-        if st.session_state.start_date:
-            st.markdown(f"*Since {st.session_state.start_date.strftime('%B %d, %Y')}*")
+    if dashboard_tab:
+        with dashboard_tab:
+            st.markdown("# 📂 My Dashboard")
+            st.markdown("View and resume your saved memory books.")
+            books = get_all_books_for_user(user['id'])
+            if books:
+                for book in books:
+                    st.markdown(f"### {book[2] or 'Untitled Book'}")
+                    st.markdown(f"<span style='color:#636e72;font-size:14px;'>Created: {book[3]}</span>", unsafe_allow_html=True)
+                    if st.button(f"View Story", key=f"view_{book[0]}"):
+                        st.session_state.story = book[1]
+                        st.session_state.couple_names = book[2]
+                        st.session_state.story_generated = True
+                        st.success("Loaded your saved book! Go to 'View Your Story' tab.")
+            else:
+                st.info("No saved books yet. Create your first memory book!")
+    # Load user story if available (not for guest)
+    if user and user.get('role') != 'guest' and not st.session_state.story and user.get('story'):
+        st.session_state.story = user['story']
+        st.session_state.couple_names = user.get('couple_names', "")
+    st.markdown("---")
+    st.markdown("### 🎧 Download Your Story as Audio (MP3)")
+    st.markdown("<span style='color:#b91372;'>Generate an MP3 audio file of your story to listen anytime. Choose from multiple voice styles for a personalized experience!</span>", unsafe_allow_html=True)
+    import tempfile
+    import asyncio
+    import edge_tts
+    voice_options = {
+        "Romantic Female (Aria)": "en-US-AriaNeural",
+        "Romantic Male (Guy)": "en-US-GuyNeural",
+        "Warm Female (Jenny)": "en-US-JennyNeural",
+        "Warm Male (Davis)": "en-US-DavisNeural",
+        "Narrator (Amber)": "en-US-AmberNeural"
+    }
+    selected_voice = st.selectbox("Choose a voice style for your audio:", list(voice_options.keys()), index=0)
+    def story_to_mp3(text, voice):
+        try:
+            async def _gen():
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tts_fp:
+                    communicate = edge_tts.Communicate(text, voice)
+                    await communicate.save(tts_fp.name)
+                    with open(tts_fp.name, "rb") as f:
+                        return f.read()
+            return asyncio.run(_gen())
+        except Exception:
+            return None
+    if st.button("🎵 Generate MP3 Audio", key="download_story_mp3"):
+        thank_you_note = "\n\nThanks for using our SoulVest Love Book. Have a great day with your partner!"
+        story_with_thanks = st.session_state.story + thank_you_note
+        audio_bytes = story_to_mp3(story_with_thanks, voice_options[selected_voice])
+        if audio_bytes:
+            st.download_button(
+                label="📥 Download Story Audio (MP3)",
+                data=audio_bytes,
+                file_name="memory_book_story.mp3",
+                mime="audio/mp3"
+            )
+        else:
+            st.info("Audio generation failed. Please ensure edge-tts is installed.")
 
-        st.markdown(":sparkling_heart: <span style='color:#b91372;font-size:18px;'>Your story is safe here—ready to be shared, treasured, and celebrated. Love, after all, is the greatest story ever told.</span>", unsafe_allow_html=True)
+        if st.session_state.story_generated:
+            st.markdown(f"## 📖 {st.session_state.couple_names}")
+            if st.session_state.start_date:
+                st.markdown(f"*Since {st.session_state.start_date.strftime('%B %d, %Y')}*")
 
-        st.markdown("---")
+            st.markdown(":sparkling_heart: <span style='color:#b91372;font-size:18px;'>Your story is safe here—ready to be shared, treasured, and celebrated. Love, after all, is the greatest story ever told.</span>", unsafe_allow_html=True)
+
+            st.markdown("---")
 
         # Add a romantic quote above the story
         st.markdown("<div style='text-align:center; margin: 0 0 18px 0;'><span style='font-size:18px; color:#b91372; font-family:Georgia,serif; font-style:italic;'>\"Whatever our souls are made of, his and mine are the same.\"<br>– Emily Brontë</span></div>", unsafe_allow_html=True)
@@ -527,30 +871,7 @@ with tab2:
             mime="application/pdf"
         )
 
-        # Local TTS Option using edge-tts
-        st.markdown("---")
-        st.markdown("### 🔊 Listen to Your Love Story (In-App)")
-        st.markdown("<span style='color:#b91372;'>Click below to play your story audio safely inside the app.</span>", unsafe_allow_html=True)
-        import tempfile
-        import asyncio
-        import edge_tts
-        def story_tts_audio(text):
-            try:
-                async def _gen():
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tts_fp:
-                        communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
-                        await communicate.save(tts_fp.name)
-                        return tts_fp.name
-                return asyncio.run(_gen())
-            except Exception:
-                return None
-        if st.button("▶️ Play Story Audio", key="play_story_tts"):
-            audio_file = story_tts_audio(st.session_state.story)
-            if audio_file:
-                st.audio(audio_file, format='audio/mp3')
-            else:
-                st.info("Text-to-speech is not available. Please ensure edge-tts is installed.")
-        st.markdown("---")
+        # ...existing code...
 
         # Viral Share Section
         st.markdown("### 💝 Share Your Love Story with the World")
@@ -586,7 +907,8 @@ with tab2:
         ✨ A beautifully written narrative of your relationship  
         📖 Five chapters covering your journey together  
         💝 A keepsake you can treasure forever  
-        📥 Downloadable PDF (coming soon)  
+        📥 Downloadable PDF  
+        🎧 Downloadable audio file (MP3) with multiple voice styles  
         💬 Shareable with friends and family  
         
         Start creating your memory book now! →
@@ -594,12 +916,23 @@ with tab2:
 
 # Footer
 st.markdown("---")
-st.markdown(
-    "<p style='text-align: center; color: #636e72;'>Made with ❤️ by <a href='https://soulvest.ai' style='color: #6c5ce7; text-decoration: none;'>SoulVest.ai</a> | Free for Valentine's Week<br>"
-    "&copy; 2026 SoulVest LoveBook. All rights reserved." 
-    "</p>",
-    unsafe_allow_html=True
-)
+# --- Freemium Model Notice ---
+if user:
+    if user['role'] == 'free' and user['usage_count'] > 3:
+        st.warning("You have reached the free usage limit. Upgrade to premium for unlimited books and features!")
+    if user['role'] == 'guest':
+        st.info("You are using the app as a guest. Your data will not be saved and you cannot resume or access a dashboard. Sign up or log in for full features!")
+    st.markdown(
+        f"""
+        <p style='text-align: center; color: #636e72;'>
+            Made with ❤️ by <a href='https://soulvest.ai' style='color: #6c5ce7; text-decoration: none;'>SoulVest.ai</a> | <b>{user['role'].capitalize()} User</b><br>
+            <span style='font-size:15px;color:#b91372;'>SoulVest LoveBook™ and all content © 2026 SoulVest.ai. All rights reserved.<br>
+            No part of this app or its content may be reproduced without written permission.<br>
+            <b>Branding, design, and code are protected by copyright and trademark law.</b></span>
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
 # Privacy Notice
 st.markdown("---")
 st.markdown("### 🔒 Privacy & Data Security")
