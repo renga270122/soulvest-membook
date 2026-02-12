@@ -125,76 +125,166 @@ def auth_ui():
     if st.session_state.user is not None:
         return
 
-    # App branding at the top
-    st.markdown("""
-    <div style='width:100%;text-align:center;margin-top:12px;margin-bottom:0;'>
-        <span style='font-size:2.1rem;font-family:Georgia,serif;color:#b91372;font-weight:bold;'>💖 SoulVest LoveBook</span>
+        # App branding at the top
+        st.markdown("""
+    <div class='lovebook-branding'>
+        <span>💖 SoulVest LoveBook</span>
     </div>
-    """, unsafe_allow_html=True)
-    # HERO section with embedded auth UI (minimal, working version)
-    st.markdown("""
     <style>
-        .hero-bg-image {
-            min-height: 70vh;
+        .lovebook-branding {
             width: 100vw;
-            position: relative;
-            background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%);
-            border-radius: 24px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-            margin: 0 0 16px 0;
-            padding: 32px 0 24px 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            text-align: center;
+            margin-top: 12px;
+            margin-bottom: 0;
+            z-index: 10;
         }
-        .hero-content {
-            background: rgba(255,255,255,0.92);
-            border-radius: 24px;
-            padding: 48px 32px 32px 32px;
-            box-shadow: 0 2px 8px #b9137240;
-            max-width: 600px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .main-caption {
-            color: #b91372;
+        .lovebook-branding span {
+            display: inline-block;
             font-family: Georgia,serif;
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 18px;
-            letter-spacing: 1px;
-            text-align: center;
-        }
-        .welcome-text {
             color: #b91372;
-            font-family: 'Segoe UI',sans-serif;
-            font-size: 1.2rem;
-            margin-bottom: 8px;
-            text-align: center;
+            font-weight: bold;
+            font-size: 2.2rem;
+            letter-spacing: 0.5px;
+            background: #fff0f6cc;
+            border-radius: 18px;
+            padding: 0.2em 0.8em;
+            box-shadow: 0 2px 8px #b9137240;
+            border: 1.5px solid #b91372;
         }
-        .subheading {
-            color: #b91372;
-            font-size: 1.1rem;
-            margin-bottom: 32px;
-            text-align: center;
+        @media (max-width: 600px) {
+            .lovebook-branding span {
+                font-size: 1.3rem;
+                padding: 0.2em 0.5em;
+                border-radius: 12px;
+            }
+        }
+        /* Animated floating hearts background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            background: transparent;
+        }
+        .floating-heart {
+            position: fixed;
+            z-index: 1;
+            pointer-events: none;
+            font-size: 2.2rem;
+            animation: floatHeart 7s linear infinite;
+            opacity: 0.7;
+        }
+        @keyframes floatHeart {
+            0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
+            80% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
         }
     </style>
-    <div class='hero-bg-image'>
+    <script>
+    // Add floating hearts dynamically
+    if (!window.heartsAdded) {
+      window.heartsAdded = true;
+      for (let i = 0; i < 8; i++) {
+        let heart = document.createElement('div');
+        heart.className = 'floating-heart';
+        heart.innerHTML = '💖';
+        heart.style.left = (10 + Math.random() * 80) + 'vw';
+        heart.style.animationDelay = (Math.random() * 6) + 's';
+        heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
+        document.body.appendChild(heart);
+      }
+    }
+    </script>
+    """, unsafe_allow_html=True)
+        # HERO section with embedded auth UI (minimal, working version)
+        st.markdown("""
+<style>
+        .hero-bg-image {
+                min-height: 70vh;
+                width: 100vw;
+                position: relative;
+                background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 50%, #ff6a88 100%);
+                border-radius: 24px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+                margin: 0 0 16px 0;
+                padding: 32px 0 24px 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+        }
+        .hero-content {
+                background: rgba(255,255,255,0.92);
+                border-radius: 24px;
+                padding: 48px 32px 32px 32px;
+                box-shadow: 0 2px 8px #b9137240;
+                max-width: 600px;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+        }
+        .main-caption {
+                color: #b91372;
+                font-family: Georgia,serif;
+                font-size: 2.5rem;
+                font-weight: 600;
+                margin-bottom: 18px;
+                letter-spacing: 1px;
+                text-align: center;
+        }
+        .welcome-text {
+                color: #b91372;
+                font-family: 'Segoe UI',sans-serif;
+                font-size: 1.2rem;
+                margin-bottom: 8px;
+                text-align: center;
+        }
+        .subheading {
+                color: #b91372;
+                font-size: 1.1rem;
+                margin-bottom: 32px;
+                text-align: center;
+        }
+</style>
+<div class='hero-bg-image'>
         <div class='hero-content'>
-            <div class='welcome-text'>Welcome to SoulVest LoveBook</div>
-            <div class='main-caption'>Love is all we need</div>
-            <div class='subheading'>A soulful digital journal for mindful reflection</div>
+                <div class='welcome-text'>Welcome to SoulVest LoveBook</div>
+                <div class='main-caption'>Love is all we need</div>
+                <div class='subheading'>A soulful digital journal for mindful reflection</div>
+        </div>
+</div>
+""", unsafe_allow_html=True)
+        # Minimal working version: add authentication UI below the HERO section
+        st.write("")
+        st.write("## Already have an account? Or first time user?")
+        auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
+
+        # How it works section
+        st.markdown("""
+<div style='margin:48px auto 0 auto; max-width:800px; text-align:center;'>
+    <h2 style='color:#b91372;font-family:Georgia,serif;font-size:2rem;margin-bottom:18px;'>How it works</h2>
+    <div style='display:flex;justify-content:center;gap:40px;flex-wrap:wrap;'>
+        <div style='flex:1;min-width:180px;'>
+            <div style='font-size:2.5rem;'>📝</div>
+            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Create</div>
+            <div style='font-size:1rem;color:#7b1c3a;'>Answer thoughtful prompts and capture your love story.</div>
+        </div>
+        <div style='flex:1;min-width:180px;'>
+            <div style='font-size:2.5rem;'>📖</div>
+            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>View</div>
+            <div style='font-size:1rem;color:#7b1c3a;'>See your story come alive in a beautiful digital book.</div>
+        </div>
+        <div style='flex:1;min-width:180px;'>
+            <div style='font-size:2.5rem;'>🎁</div>
+            <div style='font-weight:bold;color:#b91372;margin-bottom:6px;'>Share</div>
+            <div style='font-size:1rem;color:#7b1c3a;'>Download, print, or share your memories with loved ones.</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-    # Minimal working version: add authentication UI below the HERO section
-    st.write("")
-    st.write("## Already have an account? Or first time user?")
-    auth_mode = st.radio("Choose an option:", ["Sign Up", "Log In", "Continue as Guest"], horizontal=True)
+</div>
+""", unsafe_allow_html=True)
     if auth_mode == "Sign Up":
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pw")
