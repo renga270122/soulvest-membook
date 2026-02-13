@@ -169,69 +169,72 @@ def get_user_by_id(user_id):
 # --- Auth UI with Guest Option ---
 
 # --- Welcome Screen & Auth UI with Guest Option ---
-def auth_ui():
 
-    # App branding at the top
+def render_branding_header():
     st.markdown("""
-    <div class='lovebook-branding'>
-        <span>💖 SoulVest LoveBook</span>
-    </div>
-    <style>
-        .lovebook-branding {
-            width: 100vw;
-            text-align: center;
-            margin-top: 12px;
-            margin-bottom: 0;
-            z-index: 10;
-        }
-        .lovebook-branding span {
-            display: inline-block;
-            font-family: Georgia,serif;
-            color: #b91372;
-            font-weight: bold;
-            font-size: 2.2rem;
-            letter-spacing: 0.5px;
-            background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%);
-            border-radius: 18px;
-            padding: 0.3em 1em;
-            box-shadow: 0 2px 8px #b9137240;
-            border: 2px solid #b91372;
-            word-break: break-word;
-            max-width: 98vw;
-            text-shadow: 0 2px 8px #fff, 0 1px 2px #b9137240;
-        }
-        @media (max-width: 900px) {
-            .lovebook-branding span {
-                font-size: 1.7rem;
-                padding: 0.25em 0.7em;
-                border-radius: 14px;
-            }
-        }
-        @media (max-width: 600px) {
-            .lovebook-branding span {
-                font-size: 1.25rem;
-                padding: 0.22em 0.4em;
-                border-radius: 10px;
-                line-height: 1.2;
-            }
-        }
-    </style>
-    <script>
-    // Add floating hearts dynamically
-    if (!window.heartsAdded) {
-      window.heartsAdded = true;
-      for (let i = 0; i < 8; i++) {
-        let heart = document.createElement('div');
-        heart.className = 'floating-heart';
-        heart.innerHTML = '💖';
-        heart.style.left = (10 + Math.random() * 80) + 'vw';
-        heart.style.animationDelay = (Math.random() * 6) + 's';
-        heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
-        document.body.appendChild(heart);
-      }
+<div class='lovebook-branding'>
+    <span>💖 SoulVest LoveBook</span>
+</div>
+<style>
+    .lovebook-branding {
+        width: 100vw;
+        text-align: center;
+        margin-top: 12px;
+        margin-bottom: 0;
+        z-index: 10;
     }
-    </script>
-    """, unsafe_allow_html=True)
+    .lovebook-branding span {
+        display: inline-block;
+        font-family: Georgia,serif;
+        color: #b91372;
+        font-weight: bold;
+        font-size: 2.2rem;
+        letter-spacing: 0.5px;
+        background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%);
+        border-radius: 18px;
+        padding: 0.3em 1em;
+        box-shadow: 0 2px 8px #b9137240;
+        border: 2px solid #b91372;
+        word-break: break-word;
+        max-width: 98vw;
+        text-shadow: 0 2px 8px #fff, 0 1px 2px #b9137240;
+    }
+    @media (max-width: 900px) {
+        .lovebook-branding span {
+            font-size: 1.7rem;
+            padding: 0.25em 0.7em;
+            border-radius: 14px;
+        }
+    }
+    @media (max-width: 600px) {
+        .lovebook-branding span {
+            font-size: 1.25rem;
+            padding: 0.22em 0.4em;
+            border-radius: 10px;
+            line-height: 1.2;
+        }
+    }
+</style>
+<script>
+// Add floating hearts dynamically
+if (!window.heartsAdded) {
+  window.heartsAdded = true;
+  for (let i = 0; i < 8; i++) {
+    let heart = document.createElement('div');
+    heart.className = 'floating-heart';
+    heart.innerHTML = '💖';
+    heart.style.left = (10 + Math.random() * 80) + 'vw';
+    heart.style.animationDelay = (Math.random() * 6) + 's';
+    heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
+    document.body.appendChild(heart);
+  }
+}
+</script>
+""", unsafe_allow_html=True)
+
+def auth_ui():
+    # Always show branding header at the top
+    render_branding_header()
 
     # Kiosk mode: always guest, no auth UI
     if KIOSK_MODE:
