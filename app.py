@@ -179,9 +179,10 @@ def render_branding_header():
     .lovebook-branding {
         width: 100vw;
         text-align: center;
-        margin-top: 12px;
+        margin-top: 36px;
         margin-bottom: 0;
-        z-index: 10;
+        z-index: 100;
+        position: relative;
     }
     .lovebook-branding span {
         display: inline-block;
@@ -200,6 +201,9 @@ def render_branding_header():
         text-shadow: 0 2px 8px #fff, 0 1px 2px #b9137240;
     }
     @media (max-width: 900px) {
+        .lovebook-branding {
+            margin-top: 28px;
+        }
         .lovebook-branding span {
             font-size: 1.7rem;
             padding: 0.25em 0.7em;
@@ -207,6 +211,9 @@ def render_branding_header():
         }
     }
     @media (max-width: 600px) {
+        .lovebook-branding {
+            margin-top: 18vw;
+        }
         .lovebook-branding span {
             font-size: 1.25rem;
             padding: 0.22em 0.4em;
