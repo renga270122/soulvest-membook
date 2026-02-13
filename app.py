@@ -806,13 +806,10 @@ st.markdown("---")
 st.subheader("📊 Your Growth & Engagement")
 stats_col1, stats_col2 = st.columns(2)
 with stats_col1:
-    st.write("Books Created")
-    # For free users, only show their own count (max 1), not global/test/demo data
     books_created = user.get('usage_count', 0)
-    # Only show 1 if a book has actually been created (usage_count > 0)
-    if user.get('role') == 'free':
-        books_created = 1 if books_created > 0 else 0
-    st.write(f"**{books_created}**")
+    if books_created > 0:
+        st.write("Books Created")
+        st.write(f"**{books_created}**")
     # Last activity date (from user DB row or fallback)
     last_activity = user.get('last_activity') if user else None
     if not last_activity:
@@ -1261,8 +1258,9 @@ if dashboard_tab:
         with col3:
             books_created = user.get('usage_count',0)
             last_active = user.get('last_active') or datetime.now().strftime('%Y-%m-%d')
-            st.caption("Books Created")
-            st.metric(label="", value=books_created)
+            if books_created > 0:
+                st.caption("Books Created")
+                st.metric(label="", value=books_created)
             st.caption("Last Active")
             st.metric(label="", value=last_active)
         st.markdown("---")
