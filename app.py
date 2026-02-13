@@ -1,30 +1,24 @@
-## --- Update user profile in DB ---
-def update_user_profile(user_id, name, email, profile_photo=None):
-    conn = get_db()
-    if profile_photo:
-        conn.execute("UPDATE users SET name=?, email=?, profile_photo=? WHERE id=?", (name, email, profile_photo, user_id))
-    else:
-        conn.execute("UPDATE users SET name=?, email=? WHERE id=?", (name, email, user_id))
-    conn.commit()
-    conn.close()
-# --- Kiosk Mode (for public/shared use) ---
+import streamlit as st
+import sqlite3
+
+import hashlib
+import qrcode
+
+# --- Stub for update_user_profile (to avoid NameError) ---
+def update_user_profile(user_id, new_name, new_email, photo_path=None):
+    # TODO: Implement actual update logic
+    pass
+
+# --- Load environment variables ---
 import os
 from dotenv import load_dotenv
 load_dotenv()
-KIOSK_MODE = os.environ.get("LOVEBOOK_KIOSK_MODE", "0") == "1"
-import streamlit as st
-from fpdf import FPDF
-from datetime import datetime
-import base64
-import sqlite3
-import hashlib
-import uuid
 
-# QR code support
-import qrcode
-from PIL import Image
+# --- Kiosk mode flag (for venues, events, etc) ---
+KIOSK_MODE = os.environ.get("KIOSK_MODE", "0") == "1"
 
-# --- DB Connection Helper (must be above all usages) ---
+# --- College Edition: Viral Features for Students ---
+
 def get_db():
     conn = sqlite3.connect("lovebook.db", check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -39,7 +33,32 @@ def get_db():
         profile_photo TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+    # Analytics table for app hits, signups, logins
+    conn.execute('''CREATE TABLE IF NOT EXISTS analytics (
+        event TEXT PRIMARY KEY,
+        count INTEGER DEFAULT 0
+    )''')
     return conn
+
+# --- Analytics Tracking ---
+def increment_analytics(event):
+    conn = get_db()
+    cur = conn.execute("SELECT count FROM analytics WHERE event=?", (event,))
+    row = cur.fetchone()
+    if row:
+        conn.execute("UPDATE analytics SET count = count + 1 WHERE event=?", (event,))
+    else:
+        conn.execute("INSERT INTO analytics (event, count) VALUES (?, 1)", (event,))
+    conn.commit()
+    conn.close()
+
+# --- Show analytics (admin only, or for demo) ---
+def get_analytics():
+    conn = get_db()
+    cur = conn.execute("SELECT event, count FROM analytics")
+    data = dict(cur.fetchall())
+    conn.close()
+    return data
 
 # Run migration at startup
 def migrate_add_name_column():
@@ -116,12 +135,15 @@ def signup_user(name, email, password):
     try:
         conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", (name, email, hash_password(password)))
         conn.commit()
+        increment_analytics("signup")
         # Show balloons and welcome if Valentine's Day
         from datetime import datetime
         today = datetime.now()
         if today.month == 2 and today.day == 14:
             st.balloons()
             st.success("Welcome to SoulVest LoveBook! Happy Valentine's Day! 💖")
+        # Prompt for audience after signup
+        st.session_state.just_signed_up = True
         return True, "Signup successful! Please log in."
     except sqlite3.IntegrityError:
         return False, "Email already registered."
@@ -134,12 +156,15 @@ def login_user(email, password):
     row = cur.fetchone()
     conn.close()
     if row and row[3] == hash_password(password):
+        increment_analytics("login")
         # Show balloons and welcome if Valentine's Day
         from datetime import datetime
         today = datetime.now()
         if today.month == 2 and today.day == 14:
             st.balloons()
             st.success("Welcome back! Happy Valentine's Day from SoulVest LoveBook! 💖")
+        # Prompt for audience after login
+        st.session_state.just_logged_in = True
         return {
             "id": row[0], "name": row[1], "email": row[2], "role": row[4], "usage_count": row[5],
             "story": row[6] or "", "couple_names": row[7] or "", "profile_photo": row[8]
@@ -384,10 +409,31 @@ def auth_ui():
         st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
         st.info("Continuing as guest. Some features may be limited.")
 
+# --- Audience selection logic ---
 if 'user' not in st.session_state:
     st.session_state.user = None
+if 'audience' not in st.session_state:
+    st.session_state.audience = None
+
 auth_ui()
 user = st.session_state.user
+
+# Prompt for audience after signup/login
+if (st.session_state.get('just_signed_up') or st.session_state.get('just_logged_in')) and user and user.get('role') != 'guest':
+    st.session_state.just_signed_up = False
+    st.session_state.just_logged_in = False
+    st.session_state.audience = st.radio(
+        "Which best describes you as a couple?",
+        [
+            "College students / studying",
+            "Newly married",
+            "Married for years",
+            "In a relationship (not married)"
+        ],
+        key="audience_selector",
+        help="This helps us personalize your experience with the right questions and fun features!"
+    )
+    st.success("Thanks! Your experience will be personalized.")
 # --- User Dashboard Tab for Signed-in Users ---
 def get_all_books_for_user(user_id):
     conn = get_db()
@@ -401,6 +447,9 @@ def get_all_books_for_user(user_id):
 if user and user.get('role') == 'guest':
     if not KIOSK_MODE:
         with st.sidebar:
+            st.markdown("---")
+            st.markdown("[Privacy Policy](privacy_policy.md)")
+            st.markdown("[Terms of Service](terms.md)")
             st.markdown('---')
             st.markdown("**Want to save your memories?**")
             if st.button("Sign Up / Log In", key="guest_signup_sidebar"):
@@ -725,25 +774,40 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 st.markdown("---")
-# Usage Stats Section (move out of previous block)
-
 st.subheader("📊 Your Growth & Engagement")
-stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+stats_col1, stats_col2 = st.columns(2)
 with stats_col1:
     st.write("Books Created")
-    st.write(f"**{user.get('usage_count',0)}**")
+    # For free users, only show their own count (max 1), not global/test/demo data
+    books_created = user.get('usage_count', 0)
+    # Only show 1 if a book has actually been created (usage_count > 0)
+    if user.get('role') == 'free':
+        books_created = 1 if books_created > 0 else 0
+    st.write(f"**{books_created}**")
+    # Last activity date (from user DB row or fallback)
+    last_activity = user.get('last_activity') if user else None
+    if not last_activity:
+        # Fallback: use current date if not available
+        from datetime import datetime
+        last_activity = datetime.now().strftime('%Y-%m-%d')
+    st.write("Last Activity")
+    st.write(f"**{last_activity}**")
 with stats_col2:
     entries = len(st.session_state.story.split('\n\n')) if st.session_state.story else 0
     st.write("Entries")
     st.write(f"**{entries}**")
-with stats_col3:
-    streak = random.randint(1, 7)
-    st.write("Streak")
-    st.write(f"**{streak}d**")
-with stats_col4:
-    st.write("Growth")
-    st.write(":seedling:")
-st.info("Your sanctuary grows with you 🌸")
+    # Total words written
+    total_words = len(st.session_state.story.split()) if st.session_state.story else 0
+    st.write("Total Words Written")
+    st.write(f"**{total_words}**")
+
+# --- App Analytics (admin/demo only) ---
+if user and user.get('email') == 'soulvest1111@gmail.com':
+     st.markdown('---')
+     st.subheader('📈 App Analytics')
+     analytics = get_analytics()
+     st.write(f"Signups: {analytics.get('signup', 0)}")
+     st.write(f"Logins: {analytics.get('login', 0)}")
 
 import os
 with st.sidebar:
@@ -769,11 +833,12 @@ with st.sidebar:
     if user.get('role') == 'free':
         st.markdown("---")
         st.markdown("### ⭐️ Upgrade to Premium")
-        st.markdown("Unlock all question sets, unlimited books, and more!")
-        # Quick Razorpay Payment Link (no API needed)
-        payment_link = "https://rzp.io/i/yourpaymentlink"  # Replace with your real payment link
-        st.markdown(f"[<button style='background:#f37254;color:#fff;border:none;padding:12px 32px;border-radius:18px;font-size:1.1rem;cursor:pointer;'>Upgrade to Premium</button>]({payment_link})", unsafe_allow_html=True)
-        st.info("After payment, contact support or refresh to unlock premium features.")
+        st.markdown("Unlock all question sets, unlimited books, and more! (Coming soon!)")
+        # Disabled Premium Button (Coming Soon)
+        st.markdown("""
+    <button style='background:#f37254;color:#fff;border:none;padding:12px 32px;border-radius:18px;font-size:1.1rem;cursor:not-allowed;opacity:0.6;' disabled>Upgrade to Premium (Coming Soon)</button>
+    """, unsafe_allow_html=True)
+        st.info("Premium upgrade is coming soon! Payment is currently disabled.")
     # --- Edit Profile Section ---
     st.subheader("Edit Profile")
     new_name = st.text_input("Name", value=user.get('name',''), key="edit_name")
@@ -990,60 +1055,60 @@ with tab1:
             st.session_state.p2 = audio_processor_partner.result
             person2_name = audio_processor_partner.result
 
-    # Multiple themed question sets
+    # Audience-based question sets (all available to choose)
     question_sets = {
+        "College Love Story": [
+            ("How did you meet on campus or during your studies?", "E.g. In the library, at a college fest...", "first_meeting", "Tip: Recall your first encounter as students."),
+            ("What's your favorite memory from college together?", "E.g. Late-night study sessions, canteen dates...", "fav_memory", "Tip: Fun, silly, or romantic moments!"),
+            ("Describe a challenge you faced as a student couple.", "E.g. Balancing studies and time together...", "challenge", "Tip: How did you support each other?"),
+            ("What's your dream for after graduation?", "E.g. Travel, career, living together...", "future_dream", "Tip: Imagine your future as a couple!"),
+            ("Share a fun dare or challenge you did together.", "E.g. College fest dares, pranks...", "fun_dare", "Tip: What made it memorable?"),
+        ],
+        "Newly Married": [
+            ("How did you celebrate your wedding or commitment?", "E.g. A small ceremony, big party...", "wedding_celebration", "Tip: Recall the special day!"),
+            ("What's the biggest change since getting married?", "E.g. Living together, new routines...", "big_change", "Tip: What surprised you most?"),
+            ("Share a funny or sweet newlywed moment.", "E.g. First meal cooked together...", "sweet_moment", "Tip: Silly, awkward, or heartwarming!"),
+            ("What are your hopes for your first year together?", "E.g. Travel, building a home...", "first_year_hopes", "Tip: Dream big!"),
+            ("Advice for other newlyweds?", "E.g. Communicate, have fun...", "advice", "Tip: What have you learned so far?")
+        ],
+        "Long-term Married": [
+            ("What's your favorite memory from your years together?", "E.g. Family trips, anniversaries...", "fav_memory", "Tip: A moment that stands out!"),
+            ("How has your relationship grown over the years?", "E.g. Through ups and downs...", "growth", "Tip: Reflect on your journey."),
+            ("Share a challenge you overcame as a couple.", "E.g. Moving, raising kids...", "challenge", "Tip: How did you support each other?"),
+            ("What keeps your bond strong after all these years?", "E.g. Shared rituals, humor...", "bond", "Tip: Your secret to lasting love!"),
+            ("Advice for younger couples?", "E.g. Patience, kindness...", "advice", "Tip: Wisdom from experience.")
+        ],
+        "Relationship Story": [
+            ("How did you meet and what drew you to each other?", "E.g. At a party, online, mutual friends...", "first_meeting", "Tip: Your origin story!"),
+            ("What's your favorite date or outing together?", "E.g. Movie night, road trip...", "fav_date", "Tip: A moment you cherish."),
+            ("Describe a challenge you faced as a couple.", "E.g. Long distance, busy schedules...", "challenge", "Tip: How did you overcome it?"),
+            ("What are your dreams for the future together?", "E.g. Traveling, moving in...", "future_dream", "Tip: Imagine your next chapter!"),
+            ("What makes your relationship unique?", "E.g. Shared quirks, inside jokes...", "unique", "Tip: What sets you apart?"),
+        ],
         "Classic Love Story (Default)": [
             ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
             ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
             ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
             ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
             ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?"),
-            ("What is your favorite thing about your relationship?", "E.g. We can be silly together and always support each other...", "fav_thing", "Tip: Think about what makes your bond special or different from others."),
-            ("Describe a perfect day together, from morning to night.", "E.g. Waking up late, breakfast in bed, a walk in the park...", "perfect_day", "Tip: Imagine your ideal day—what would you do, where would you go, how would you feel?"),
-            ("What advice would you give to other couples about love?", "E.g. Always communicate and never stop having fun...", "advice", "Tip: Share wisdom from your own experience or something you wish you knew earlier."),
-            ("Write a message to your partner for the future.", "E.g. No matter what, I’ll always be by your side...", "future_message", "Tip: Speak from the heart—what do you want your partner to remember or feel?"),
-            ("What makes your love story unique?", "E.g. We met by chance and it changed our lives forever...", "unique_story", "Tip: Every love story is different—what makes yours stand out?")
-        ],
-        "Hobbies, Passions & Love Language": [
-            ("What hobby or activity do you most enjoy doing together?", "E.g. Cooking, hiking, painting...", "shared_hobby", "Tip: Think about what brings you both joy."),
-            ("Describe a time you supported each other's passions or dreams.", "E.g. Cheering at their first art show...", "support_passions", "Tip: How do you encourage each other?"),
-            ("What is your partner's favorite way to relax or unwind?", "E.g. Reading, music, yoga...", "relax_way", "Tip: What helps them recharge?"),
-            ("How do your love languages differ or match?", "E.g. Words of affirmation vs. acts of service...", "love_language", "Tip: How do you express and receive love?"),
-            ("Share a new skill or hobby you want to try together.", "E.g. Dancing, pottery, learning a language...", "new_skill", "Tip: What would be fun to learn as a couple?"),
-            ("What is something your partner is passionate about that inspires you?", "E.g. Their dedication to volunteering...", "partner_passion", "Tip: What do you admire about their interests?"),
-            ("Describe a favorite memory related to music, art, or creativity.", "E.g. Singing karaoke together...", "creative_memory", "Tip: Any artistic or musical moments?"),
-            ("How do you celebrate each other's achievements, big or small?", "E.g. Special dinner, handwritten note...", "celebrate_achievements", "Tip: What rituals or habits do you have?"),
-            ("What is a quirky or unique interest you share?", "E.g. Collecting postcards, birdwatching...", "quirky_interest", "Tip: Something that makes your bond special."),
-            ("If you could plan the perfect day based on your shared passions, what would it look like?", "E.g. Morning run, afternoon cooking, evening movie...", "passion_day", "Tip: Combine your favorite things!"),
-        ],
-        "Anniversary Reflections": [
-            ("What is your favorite memory from the past year together?", "E.g. Our trip to the mountains...", "fav_year_memory", "Tip: Think about a moment that defined your year."),
-            ("How has your relationship grown or changed this year?", "E.g. We learned to communicate better...", "growth", "Tip: Reflect on your journey as a couple."),
-            ("What is something new you discovered about your partner?", "E.g. Their hidden talent for cooking...", "discovery", "Tip: Surprises, quirks, or new habits."),
-            ("What are you most grateful for in your relationship?", "E.g. Their constant support...", "gratitude", "Tip: Big or small, what means the most?"),
-            ("What is your wish for the coming year together?", "E.g. More adventures and laughter...", "wish", "Tip: Hopes, dreams, or goals for the future."),
-        ],
-        "Adventure & Travel": [
-            ("Describe your most memorable trip together.", "E.g. Our Paris adventure...", "memorable_trip", "Tip: What made it special?"),
-            ("What destination is on your couple's bucket list?", "E.g. Japan in cherry blossom season...", "bucket_list", "Tip: Dream big!"),
-            ("Share a funny or unexpected travel story.", "E.g. We got lost and found a hidden gem...", "funny_travel", "Tip: Mishaps, surprises, or laughs."),
-            ("What do you love most about traveling together?", "E.g. Discovering new foods...", "love_travel", "Tip: What makes you a great travel team?"),
-            ("If you could go anywhere tomorrow, where would you go and why?", "E.g. Back to the beach...", "go_anywhere", "Tip: Let your imagination run wild!"),
         ]
     }
 
     # Let user select a question set
     st.markdown("### Choose a Question Set for Your Book")
-    # Only allow additional sets for paid users
-    if user and user.get('role') == 'premium':
-        question_set_names = list(question_sets.keys())
-        st.success("You are a premium user! All question sets unlocked.")
+    if not question_sets:
+        st.warning("No question sets available. Please select your audience above.")
+        questions = []
     else:
-        question_set_names = ["Classic Love Story (Default)"]
-        if user and user.get('role') == 'free':
-            st.info("Upgrade to premium to unlock more question sets and unlimited books!")
-    selected_set = st.selectbox("Select a theme:", question_set_names, key="question_set_selector")
-    questions = question_sets[selected_set]
+        if user and user.get('role') == 'premium':
+            question_set_names = list(question_sets.keys())
+            st.success("You are a premium user! All question sets unlocked.")
+        else:
+            question_set_names = list(question_sets.keys())
+            if user and user.get('role') == 'free' and len(question_set_names) > 1:
+                st.info("Upgrade to premium to unlock more question sets and unlimited books!")
+        selected_set = st.selectbox("Select a theme:", question_set_names, key="question_set_selector")
+        questions = question_sets[selected_set]
 
     answers = {}
     for idx, (q, ph, key, tip) in enumerate(questions):
@@ -1086,7 +1151,7 @@ with tab1:
         # Limit free users to 1 book (or set a usage limit)
         usage_limit = 1
         if user and user.get('role') == 'free' and user.get('usage_count', 0) >= usage_limit:
-            st.warning("You have reached the free usage limit. Upgrade to premium for unlimited books and features!")
+            st.warning("Upgrade to premium for unlimited books and features! (Coming soon!)")
         else:
             if st.button("✨ Generate Our Memory Book", use_container_width=True):
                 required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
@@ -1139,7 +1204,45 @@ with tab1:
 
 with tab2:
     # ...existing code for View Your Story...
-    pass
+    # --- Shareable Love Story Card Section (moved here) ---
+    if st.session_state.get('story_generated') and st.session_state.story:
+        st.markdown("---")
+        st.subheader("💌 Create a Shareable Love Story Card")
+        st.caption("Pick your favorite memory or quote and turn it into a beautiful image to share on WhatsApp, Instagram, or anywhere!")
+        default_card_text = st.session_state.story.split('\n\n')[0] if st.session_state.story else "Love is all we need."
+        card_text = st.text_area("Your favorite memory or quote", value=default_card_text, max_chars=180, height=80, key="card_text")
+        card_bg_color = st.color_picker("Card background color", value="#ffb6b9", key="card_bg_color")
+        card_text_color = st.color_picker("Text color", value="#b91372", key="card_text_color")
+        if st.button("Generate Card Image", key="generate_card_img"):
+            from PIL import Image, ImageDraw, ImageFont
+            import io
+            # Card size (mobile-friendly)
+            W, H = 720, 900
+            img = Image.new("RGB", (W, H), card_bg_color)
+            draw = ImageDraw.Draw(img)
+            # Try to use a nice font, fallback to default
+            try:
+                font = ImageFont.truetype("arial.ttf", 48)
+            except:
+                font = ImageFont.load_default()
+            # Word wrap
+            import textwrap
+            lines = textwrap.wrap(card_text, width=22)
+            y_text = H//3
+            for line in lines:
+                w, h = draw.textsize(line, font=font)
+                draw.text(((W-w)//2, y_text), line, font=font, fill=card_text_color)
+                y_text += h + 10
+            # Branding at bottom
+            brand_font = ImageFont.truetype("arial.ttf", 32) if hasattr(ImageFont, 'truetype') else font
+            brand = "💖 SoulVest LoveBook"
+            bw, bh = draw.textsize(brand, font=brand_font)
+            draw.text(((W-bw)//2, H-80), brand, font=brand_font, fill="#fff")
+            # Show and download
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            st.image(buf.getvalue(), caption="Your Shareable Card", use_column_width=True)
+            st.download_button("Download Card Image", data=buf.getvalue(), file_name="lovebook_card.png", mime="image/png")
 
 if dashboard_tab:
     with dashboard_tab:
@@ -1224,7 +1327,13 @@ if dashboard_tab:
     st.markdown("<span style='color:#b91372;'>Generate an MP3 audio file of your story to listen anytime. Choose from multiple voice styles for a personalized experience!</span>", unsafe_allow_html=True)
     import tempfile
     import asyncio
-    import edge_tts
+    import os
+    os.environ["EDGE_TTS_DISABLE_CERT_VERIFY"] = "1"  # Disable SSL verification for edge-tts (testing only)
+    try:
+        import edge_tts
+        edge_tts_available = True
+    except ImportError as e:
+        edge_tts_available = False
     voice_options = {
         "Romantic Female (Aria)": "en-US-AriaNeural",
         "Romantic Male (Guy)": "en-US-GuyNeural",
@@ -1242,21 +1351,24 @@ if dashboard_tab:
                     with open(tts_fp.name, "rb") as f:
                         return f.read()
             return asyncio.run(_gen())
-        except Exception:
+        except Exception as e:
+            st.error(f"Audio generation failed: {e}")
             return None
     if st.button("🎵 Generate MP3 Audio", key="download_story_mp3"):
         thank_you_note = "\n\nThanks for using our SoulVest Love Book. Have a great day with your partner!"
         story_with_thanks = st.session_state.story + thank_you_note
-        audio_bytes = story_to_mp3(story_with_thanks, voice_options[selected_voice])
-        if audio_bytes:
-            st.download_button(
-                label="📥 Download Story Audio (MP3)",
-                data=audio_bytes,
-                file_name="memory_book_story.mp3",
-                mime="audio/mp3"
-            )
+        if not edge_tts_available:
+            st.error("Audio generation failed. The edge-tts package is not installed or not available in this environment.")
         else:
-            st.info("Audio generation failed. Please ensure edge-tts is installed.")
+            audio_bytes = story_to_mp3(story_with_thanks, voice_options[selected_voice])
+            if audio_bytes:
+                st.download_button(
+                    label="📥 Download Story Audio (MP3)",
+                    data=audio_bytes,
+                    file_name="memory_book_story.mp3",
+                    mime="audio/mp3"
+                )
+            # If error already shown in story_to_mp3, don't repeat
 
         if st.session_state.story_generated:
             # Immersive Book Viewer
