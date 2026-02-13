@@ -807,9 +807,9 @@ st.subheader("📊 Your Growth & Engagement")
 stats_col1, stats_col2 = st.columns(2)
 with stats_col1:
     books_created = user.get('usage_count', 0)
-    if books_created > 0:
-        st.write("Books Created")
-        st.write(f"**{books_created}**")
+    display_books_created = 1 if books_created > 0 else 0
+    st.write("Books Created")
+    st.write(f"**{display_books_created}**")
     # Last activity date (from user DB row or fallback)
     last_activity = user.get('last_activity') if user else None
     if not last_activity:
