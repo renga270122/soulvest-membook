@@ -13,22 +13,28 @@ class AudioProcessor:
         self.q = queue.Queue()
         self.result = ""
         self.lock = threading.Lock()
+        self.sr_samplerate = 16000  # default sample rate for speech_recognition
+        self.sr_samplewidth = 2     # 16-bit audio
 
     def recv(self, frame):
+        # Convert frame to bytes for speech_recognition
         audio = frame.to_ndarray()
-        self.q.put(audio)
+        # Convert to 16-bit PCM if needed
+        if audio.dtype != 'int16':
+            audio = (audio * 32767).astype('int16')
+        audio_bytes = audio.tobytes()
+        self.q.put(audio_bytes)
         return frame
 
     def recognize(self):
         recognizer = sr.Recognizer()
         while not self.q.empty():
-            audio = self.q.get()
+            audio_bytes = self.q.get()
             try:
-                with sr.AudioFile(audio) as source:
-                    audio_data = recognizer.record(source)
-                    text = recognizer.recognize_google(audio_data)
-                    with self.lock:
-                        self.result += text + " "
+                audio_data = sr.AudioData(audio_bytes, self.sr_samplerate, self.sr_samplewidth)
+                text = recognizer.recognize_google(audio_data)
+                with self.lock:
+                    self.result += text + " "
             except Exception:
                 pass
         return self.result
