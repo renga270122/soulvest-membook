@@ -715,7 +715,7 @@ else:
     """, unsafe_allow_html=True)
 
 
-st.title("💖 SoulVest LoveBook")
+ # st.title("💖 SoulVest LoveBook")  # Removed duplicate title, branding header is already shown
 if not user:
     st.warning("Please log in, sign up, or continue as guest to use the app.")
     st.stop()
