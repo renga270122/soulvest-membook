@@ -305,8 +305,9 @@ if (!window.heartsAdded) {
 """, unsafe_allow_html=True)
 
 def auth_ui():
-    # Always show branding header at the top
-    render_branding_header()
+    # Only show branding header for guest/landing page, not after login
+    if st.session_state.user is None:
+        render_branding_header()
 
     # Kiosk mode: always guest, no auth UI
     if KIOSK_MODE:
