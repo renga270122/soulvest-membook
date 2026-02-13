@@ -7,3 +7,4 @@ streamlit-webrtc
 speechrecognition
 av
 razorpay
+python-dotenv
