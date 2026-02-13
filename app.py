@@ -438,7 +438,6 @@ def auth_ui():
         st.session_state.user = {"role": "guest", "email": None, "id": None, "usage_count": 0, "story": "", "couple_names": ""}
         st.info("Continuing as guest. Some features may be limited.")
 
-# --- Audience selection logic ---
 if 'user' not in st.session_state:
     st.session_state.user = None
 auth_ui()
@@ -1065,7 +1064,7 @@ with tab1:
             st.session_state.p2 = audio_processor_partner.result
             person2_name = audio_processor_partner.result
 
-    # Audience-based question sets (all available to choose)
+    # Universal question set for all couples
     universal_questions = [
         ("How did you first meet or notice each other?", "E.g. At a coffee shop, college, online...", "first_meeting", "Tip: Recall your first encounter."),
         ("What's your favorite memory together?", "E.g. Trips, celebrations, funny moments...", "fav_memory", "Tip: A moment that stands out!"),
