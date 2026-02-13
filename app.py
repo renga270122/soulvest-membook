@@ -1,8 +1,37 @@
-import streamlit as st
-import sqlite3
-
 import hashlib
 import qrcode
+import streamlit as st
+import sqlite3
+import streamlit_webrtc as webrtc
+import av
+import queue
+import threading
+import speech_recognition as sr
+
+class AudioProcessor:
+    def __init__(self):
+        self.q = queue.Queue()
+        self.result = ""
+        self.lock = threading.Lock()
+
+    def recv(self, frame):
+        audio = frame.to_ndarray()
+        self.q.put(audio)
+        return frame
+
+    def recognize(self):
+        recognizer = sr.Recognizer()
+        while not self.q.empty():
+            audio = self.q.get()
+            try:
+                with sr.AudioFile(audio) as source:
+                    audio_data = recognizer.record(source)
+                    text = recognizer.recognize_google(audio_data)
+                    with self.lock:
+                        self.result += text + " "
+            except Exception:
+                pass
+        return self.result
 
 # --- Stub for update_user_profile (to avoid NameError) ---
 def update_user_profile(user_id, new_name, new_email, photo_path=None):
@@ -412,28 +441,8 @@ def auth_ui():
 # --- Audience selection logic ---
 if 'user' not in st.session_state:
     st.session_state.user = None
-if 'audience' not in st.session_state:
-    st.session_state.audience = None
-
 auth_ui()
 user = st.session_state.user
-
-# Prompt for audience after signup/login
-if (st.session_state.get('just_signed_up') or st.session_state.get('just_logged_in')) and user and user.get('role') != 'guest':
-    st.session_state.just_signed_up = False
-    st.session_state.just_logged_in = False
-    st.session_state.audience = st.radio(
-        "Which best describes you as a couple?",
-        [
-            "College students / studying",
-            "Newly married",
-            "Married for years",
-            "In a relationship (not married)"
-        ],
-        key="audience_selector",
-        help="This helps us personalize your experience with the right questions and fun features!"
-    )
-    st.success("Thanks! Your experience will be personalized.")
 # --- User Dashboard Tab for Signed-in Users ---
 def get_all_books_for_user(user_id):
     conn = get_db()
@@ -960,6 +969,7 @@ tab2 = tabs[1]
 dashboard_tab = tabs[2] if len(tabs) > 2 else None
 
 with tab1:
+
     import streamlit_webrtc as webrtc
     import av
     import queue
@@ -1056,59 +1066,23 @@ with tab1:
             person2_name = audio_processor_partner.result
 
     # Audience-based question sets (all available to choose)
-    question_sets = {
-        "College Love Story": [
-            ("How did you meet on campus or during your studies?", "E.g. In the library, at a college fest...", "first_meeting", "Tip: Recall your first encounter as students."),
-            ("What's your favorite memory from college together?", "E.g. Late-night study sessions, canteen dates...", "fav_memory", "Tip: Fun, silly, or romantic moments!"),
-            ("Describe a challenge you faced as a student couple.", "E.g. Balancing studies and time together...", "challenge", "Tip: How did you support each other?"),
-            ("What's your dream for after graduation?", "E.g. Travel, career, living together...", "future_dream", "Tip: Imagine your future as a couple!"),
-            ("Share a fun dare or challenge you did together.", "E.g. College fest dares, pranks...", "fun_dare", "Tip: What made it memorable?"),
-        ],
-        "Newly Married": [
-            ("How did you celebrate your wedding or commitment?", "E.g. A small ceremony, big party...", "wedding_celebration", "Tip: Recall the special day!"),
-            ("What's the biggest change since getting married?", "E.g. Living together, new routines...", "big_change", "Tip: What surprised you most?"),
-            ("Share a funny or sweet newlywed moment.", "E.g. First meal cooked together...", "sweet_moment", "Tip: Silly, awkward, or heartwarming!"),
-            ("What are your hopes for your first year together?", "E.g. Travel, building a home...", "first_year_hopes", "Tip: Dream big!"),
-            ("Advice for other newlyweds?", "E.g. Communicate, have fun...", "advice", "Tip: What have you learned so far?")
-        ],
-        "Long-term Married": [
-            ("What's your favorite memory from your years together?", "E.g. Family trips, anniversaries...", "fav_memory", "Tip: A moment that stands out!"),
-            ("How has your relationship grown over the years?", "E.g. Through ups and downs...", "growth", "Tip: Reflect on your journey."),
-            ("Share a challenge you overcame as a couple.", "E.g. Moving, raising kids...", "challenge", "Tip: How did you support each other?"),
-            ("What keeps your bond strong after all these years?", "E.g. Shared rituals, humor...", "bond", "Tip: Your secret to lasting love!"),
-            ("Advice for younger couples?", "E.g. Patience, kindness...", "advice", "Tip: Wisdom from experience.")
-        ],
-        "Relationship Story": [
-            ("How did you meet and what drew you to each other?", "E.g. At a party, online, mutual friends...", "first_meeting", "Tip: Your origin story!"),
-            ("What's your favorite date or outing together?", "E.g. Movie night, road trip...", "fav_date", "Tip: A moment you cherish."),
-            ("Describe a challenge you faced as a couple.", "E.g. Long distance, busy schedules...", "challenge", "Tip: How did you overcome it?"),
-            ("What are your dreams for the future together?", "E.g. Traveling, moving in...", "future_dream", "Tip: Imagine your next chapter!"),
-            ("What makes your relationship unique?", "E.g. Shared quirks, inside jokes...", "unique", "Tip: What sets you apart?"),
-        ],
-        "Classic Love Story (Default)": [
-            ("The moment you first met or noticed each other. What do you remember most?", "E.g. At a coffee shop, I noticed their smile...", "first_meeting", "Tip: Think about the setting, your first impression, or a funny detail from that day."),
-            ("A memory that always makes you smile when you think of your partner.", "E.g. That time we got caught in the rain and laughed so much...", "smile_memory", "Tip: Recall a moment that brings you joy or makes you laugh every time you remember it."),
-            ("Describe a challenge you both overcame together. How did it make your bond stronger?", "E.g. We moved to a new city and supported each other...", "challenge", "Tip: Challenges can be big or small—focus on how you supported each other."),
-            ("What is something your partner does that makes you feel truly loved?", "E.g. They always remember the little things...", "feel_loved", "Tip: It could be a daily gesture, a habit, or something they say that warms your heart."),
-            ("Share a dream or adventure you both want to experience in the future.", "E.g. Travel the world together, start a family...", "future_dream", "Tip: Let your imagination run wild—what would you love to do together?"),
-        ]
-    }
+    universal_questions = [
+        ("How did you first meet or notice each other?", "E.g. At a coffee shop, college, online...", "first_meeting", "Tip: Recall your first encounter."),
+        ("What's your favorite memory together?", "E.g. Trips, celebrations, funny moments...", "fav_memory", "Tip: A moment that stands out!"),
+        ("Describe a challenge you overcame as a couple.", "E.g. Moving, studies, raising kids...", "challenge", "Tip: How did you support each other?"),
+        ("What keeps your bond strong?", "E.g. Shared rituals, humor, communication...", "bond", "Tip: Your secret to lasting love!"),
+        ("What is your dream for the future together?", "E.g. Travel, family, new adventures...", "future_dream", "Tip: Looking ahead."),
+        ("What was your first date like?", "E.g. Nervous, exciting...", "first_date", "Tip: Recall your first outing together."),
+        ("Describe a funny or embarrassing moment together.", "E.g. Mishaps, jokes...", "funny_moment", "Tip: Light-hearted stories."),
+        ("What is your favorite way to spend time together?", "E.g. Walks, cooking...", "fav_time", "Tip: Daily routines or special occasions."),
+        ("How do you handle disagreements?", "E.g. Communication, humor...", "handle_disagreements", "Tip: Conflict resolution."),
+        ("What advice would you give to couples?", "E.g. Patience, kindness...", "couple_advice", "Tip: Share your wisdom.")
+    ]
 
     # Let user select a question set
     st.markdown("### Choose a Question Set for Your Book")
-    if not question_sets:
-        st.warning("No question sets available. Please select your audience above.")
-        questions = []
-    else:
-        if user and user.get('role') == 'premium':
-            question_set_names = list(question_sets.keys())
-            st.success("You are a premium user! All question sets unlocked.")
-        else:
-            question_set_names = list(question_sets.keys())
-            if user and user.get('role') == 'free' and len(question_set_names) > 1:
-                st.info("Upgrade to premium to unlock more question sets and unlimited books!")
-        selected_set = st.selectbox("Select a theme:", question_set_names, key="question_set_selector")
-        questions = question_sets[selected_set]
+    st.markdown("### Memory Book Questions for All Couples")
+    questions = universal_questions
 
     answers = {}
     for idx, (q, ph, key, tip) in enumerate(questions):
@@ -1494,9 +1468,7 @@ if dashboard_tab:
             mime="application/pdf"
         )
 
-        # ...existing code...
-
-        # Viral Share Section
+        # --- Viral Share Section ---
         st.markdown("### 💝 Share Your Love Story with the World")
         st.markdown("<span style='color:#b91372;'>Let your love inspire others—share your story on WhatsApp, Facebook, or Instagram! Make this Valentine's Day unforgettable for you and your beloved.</span>", unsafe_allow_html=True)
         whatsapp_text = f"Our Love Story - {st.session_state.couple_names} - Made with SoulVest Memory Book. Create yours at https://soulvest.ai"
