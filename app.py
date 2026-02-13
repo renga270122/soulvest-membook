@@ -191,49 +191,29 @@ def auth_ui():
             font-weight: bold;
             font-size: 2.2rem;
             letter-spacing: 0.5px;
-            background: #fff0f6cc;
+            background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%);
             border-radius: 18px;
-            padding: 0.2em 0.8em;
+            padding: 0.3em 1em;
             box-shadow: 0 2px 8px #b9137240;
-            border: 1.5px solid #b91372;
+            border: 2px solid #b91372;
             word-break: break-word;
-            max-width: 95vw;
+            max-width: 98vw;
+            text-shadow: 0 2px 8px #fff, 0 1px 2px #b9137240;
         }
         @media (max-width: 900px) {
             .lovebook-branding span {
-                font-size: 1.5rem;
-                padding: 0.2em 0.6em;
+                font-size: 1.7rem;
+                padding: 0.25em 0.7em;
                 border-radius: 14px;
             }
         }
         @media (max-width: 600px) {
             .lovebook-branding span {
-                font-size: 1.1rem;
-                padding: 0.2em 0.3em;
+                font-size: 1.25rem;
+                padding: 0.22em 0.4em;
                 border-radius: 10px;
+                line-height: 1.2;
             }
-        }
-        /* Animated floating hearts background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            pointer-events: none;
-            z-index: 0;
-            background: transparent;
-        }
-        .floating-heart {
-            position: fixed;
-            z-index: 1;
-            pointer-events: none;
-            font-size: 2.2rem;
-            animation: floatHeart 7s linear infinite;
-            opacity: 0.7;
-        }
-        @keyframes floatHeart {
-            0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
-            80% { opacity: 0.8; }
-            100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
         }
     </style>
     <script>
