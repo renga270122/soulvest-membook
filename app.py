@@ -163,6 +163,48 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Add global style for clear, modern, and bold fonts for key UI elements
+st.markdown("""
+<style>
+    .stTextInput label, .stTextInput input, .stTextArea label, .stTextArea textarea {
+        font-family: 'Poppins', 'Segoe UI', 'Arial', sans-serif !important;
+        font-size: 1.08rem !important;
+        color: #b91372 !important;
+        font-weight: 600 !important;
+    }
+    .stButton button {
+        font-family: 'Poppins', 'Segoe UI', 'Arial', sans-serif !important;
+        font-size: 1.08rem !important;
+        font-weight: bold !important;
+        color: #fff !important;
+        background: linear-gradient(90deg, #b91372 60%, #ffb6b9 100%) !important;
+        border-radius: 8px !important;
+        border: none !important;
+        box-shadow: 0 2px 8px #b9137240;
+    }
+    .stButton button:hover {
+        background: linear-gradient(90deg, #ffb6b9 0%, #b91372 100%) !important;
+        color: #fff !important;
+    }
+    .stCaption, .stMarkdown, .stSubheader, .stHeader, .stTitle {
+        font-family: 'Poppins', 'Segoe UI', 'Arial', sans-serif !important;
+        color: #b91372 !important;
+    }
+    .stSubheader, .stHeader, .stTitle {
+        font-weight: bold !important;
+    }
+    .stMarkdown strong, .stMarkdown b {
+        color: #b91372 !important;
+        font-weight: bold !important;
+    }
+    .stAlert, .stSuccess, .stError, .stWarning {
+        font-family: 'Poppins', 'Segoe UI', 'Arial', sans-serif !important;
+        font-size: 1.08rem !important;
+        font-weight: bold !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
