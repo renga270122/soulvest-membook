@@ -235,8 +235,13 @@ def render_branding_header():
         text-align: center;
         margin-top: 36px;
         margin-bottom: 0;
-        z-index: 100;
-        position: relative;
+        z-index: 9999;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: transparent;
+        pointer-events: none;
     }
     .lovebook-branding span {
         display: inline-block;
@@ -253,6 +258,7 @@ def render_branding_header():
         word-break: break-word;
         max-width: 98vw;
         text-shadow: 0 2px 8px #fff, 0 1px 2px #b9137240;
+        pointer-events: auto;
     }
     @media (max-width: 900px) {
         .lovebook-branding {
