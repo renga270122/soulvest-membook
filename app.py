@@ -801,28 +801,51 @@ st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let y
 
 # --- Valentine's Day Tips Section ---
 with st.expander("💡 Valentine's Day Tips: Plan the Perfect Day & Gift Ideas", expanded=True):
-    st.markdown("""
-**Plan a Memorable Valentine's Day:**
+    st.markdown("**Plan a Memorable Valentine's Day:**")
+    plan_ideas = [
+        "Start with a heartfelt breakfast in bed or a surprise morning note",
+        "Plan a day of shared activities: a walk, a movie, a picnic, or a favorite hobby together",
+        "Write a love letter or create a digital memory book together (right here!)",
+        "Cook a special meal or order from your favorite restaurant",
+        "Set aside time for a meaningful conversation—share dreams, memories, or future plans",
+        "End the day with a cozy movie night, stargazing, or a playlist of your favorite songs",
+        "Create a couple's vision board for your future together",
+        "Do a TikTok or Instagram challenge together and share your fun side",
+        "Recreate your first date at home or outdoors",
+        "Try a new hobby together: pottery, painting, or dancing (even via YouTube)",
+        "Host a virtual double date with friends or family",
+        "Make a time capsule with notes and mementos to open next year",
+        "Go on a spontaneous mini road trip or city adventure"
+    ]
+    import random
+    st.markdown(":star2: <span style='color:#b91372;'>Here are some creative ideas for your day:</span>", unsafe_allow_html=True)
+    for idea in random.sample(plan_ideas, 5):
+        st.markdown(f"- {idea}")
 
-- Start with a heartfelt breakfast in bed or a surprise morning note.
-- Plan a day of shared activities: a walk, a movie, a picnic, or a favorite hobby together.
-- Write a love letter or create a digital memory book together (right here!).
-- Cook a special meal or order from your favorite restaurant.
-- Set aside time for a meaningful conversation—share dreams, memories, or future plans.
-- End the day with a cozy movie night, stargazing, or a playlist of your favorite songs.
+    st.markdown("**Gift Ideas:**")
+    gift_ideas = [
+        "A personalized memory book (download your story as a PDF!)",
+        "A handwritten letter or poem",
+        "A custom playlist of your favorite songs",
+        "A framed photo or collage",
+        "A surprise video message from friends/family",
+        "A DIY gift: scrapbook, jar of love notes, or a handmade card",
+        "An experience: online class, virtual tour, or a future date voucher",
+        "A star map of the night you met",
+        "A custom couple's illustration or caricature",
+        "A personalized puzzle with your photo",
+        "A subscription box (wine, books, games, or snacks)",
+        "A QR code that links to a secret love message or video",
+        "A plant or bonsai to grow together as a symbol of your relationship",
+        "A couple's game night kit (board games, card games, or trivia)",
+        "A surprise scavenger hunt with clues around your home or city"
+    ]
+    st.markdown(":gift_heart: <span style='color:#b91372;'>Unique gift ideas to surprise your partner:</span>", unsafe_allow_html=True)
+    for idea in random.sample(gift_ideas, 5):
+        st.markdown(f"- {idea}")
 
-**Gift Ideas:**
-- A personalized memory book (download your story as a PDF!)
-- A handwritten letter or poem
-- A custom playlist of your favorite songs
-- A framed photo or collage
-- A surprise video message from friends/family
-- A DIY gift: scrapbook, jar of love notes, or a handmade card
-- An experience: online class, virtual tour, or a future date voucher
-
-**Bonus:**
-- Try the Ho'oponopono practice: "I'm sorry. Please forgive me. Thank you. I love you." Say it, write it, or include it in your book for a healing, loving touch.
-    """)
+    st.markdown("**Bonus:**")
+    st.markdown("Try the Ho'oponopono practice: 'I'm sorry. Please forgive me. Thank you. I love you.' Say it, write it, or include it in your book for a healing, loving touch.")
 import random
 romantic_quotes = [
         ("Love is composed of a single soul inhabiting two bodies.", "Aristotle"),
@@ -994,8 +1017,33 @@ with st.sidebar:
     if st.button('Show me another tip', key='next_tip'):
         st.session_state.tip_index = (st.session_state.tip_index + 1) % len(pro_tips)
     st.info(pro_tips[st.session_state.tip_index])
-    st.markdown("### 🎁 Place a Gift Order (External)")
-    st.markdown("<span style='color:#b91372;font-size:16px;'>Surprise your loved one with a gift! Choose from these famous sites (not paid, just for your convenience):</span>", unsafe_allow_html=True)
+    st.markdown("### 🎁 Gift Ideas for Every Age Group")
+    st.markdown("<span style='color:#b91372;font-size:16px;'>Surprise your loved one with a thoughtful gift! Here are some ideas for different age groups:</span>", unsafe_allow_html=True)
+    age_gift_ideas = {
+        'Young Couples (18-25)': [
+            "Personalized photo album or scrapbook",
+            "A fun experience: concert, amusement park, or escape room",
+            "Trendy gadgets or matching accessories",
+            "Handwritten love letters or a jar of date night ideas"
+        ],
+        'Midlife Couples (26-45)': [
+            "A weekend getaway or staycation",
+            "Customized jewelry or watches",
+            "Cooking class or wine tasting experience",
+            "A framed photo from a special memory"
+        ],
+        'Older Couples (46+)': [
+            "A relaxing spa day or massage voucher",
+            "Personalized keepsake (engraved frame, custom art)",
+            "A favorite book or music collection",
+            "A cozy dinner at a favorite restaurant or at home"
+        ]
+    }
+    for group, ideas in age_gift_ideas.items():
+        st.markdown(f"<b>{group}</b>", unsafe_allow_html=True)
+        for idea in ideas:
+            st.markdown(f"- {idea}")
+    st.markdown("<span style='color:#b91372;font-size:15px;'>Or order from these popular sites:</span>", unsafe_allow_html=True)
     st.markdown("""
     - [Ferns N Petals (FNP)](https://www.fnp.com/)
     - [FlowerAura](https://www.floweraura.com/)
