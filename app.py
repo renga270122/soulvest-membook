@@ -1139,25 +1139,20 @@ with tab1:
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        # Limit free users to 1 book (or set a usage limit)
-        usage_limit = 1
-        if user and user.get('role') == 'free' and user.get('usage_count', 0) >= usage_limit:
-            st.warning("Upgrade to premium for unlimited books and features! (Coming soon!)")
-        else:
-            if st.button("✨ Generate Our Memory Book", use_container_width=True):
-                required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
-                if not all(required_fields):
-                    st.error("⚠️ Please fill in at least: Names and the first two questions.")
-                else:
-                    with st.spinner("Creating your beautiful memory book... 📖"):
-                        # Build story from all answers
-                        story = f"""
+        if st.button("✨ Generate Our Memory Book", use_container_width=True):
+            required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
+            if not all(required_fields):
+                st.error("⚠️ Please fill in at least: Names and the first two questions.")
+            else:
+                with st.spinner("Creating your beautiful memory book... 📖"):
+                    # Build story from all answers
+                    story = f"""
 {person1_name} & {person2_name}'s Memory Book\n\n"""
-                        for idx, (q, ph, key, tip) in enumerate(questions):
-                            ans = answers.get(key, '').strip()
-                            if ans:
-                                story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
-                        st.session_state.story = story
+                    for idx, (q, ph, key, tip) in enumerate(questions):
+                        ans = answers.get(key, '').strip()
+                        if ans:
+                            story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
+                    st.session_state.story = story
                         st.session_state.story_generated = True
                         st.session_state.couple_names = f"{person1_name} & {person2_name}"
                         # Save to DB for persistence only if not guest
