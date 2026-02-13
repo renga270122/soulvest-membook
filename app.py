@@ -154,6 +154,15 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
+# Add top padding to main content so branding header is not cut off
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 80px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
