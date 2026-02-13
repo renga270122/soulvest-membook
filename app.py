@@ -9,6 +9,8 @@ def update_user_profile(user_id, name, email, profile_photo=None):
     conn.close()
 # --- Kiosk Mode (for public/shared use) ---
 import os
+from dotenv import load_dotenv
+load_dotenv()
 KIOSK_MODE = os.environ.get("LOVEBOOK_KIOSK_MODE", "0") == "1"
 import streamlit as st
 from fpdf import FPDF
@@ -114,6 +116,12 @@ def signup_user(name, email, password):
     try:
         conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", (name, email, hash_password(password)))
         conn.commit()
+        # Show balloons and welcome if Valentine's Day
+        from datetime import datetime
+        today = datetime.now()
+        if today.month == 2 and today.day == 14:
+            st.balloons()
+            st.success("Welcome to SoulVest LoveBook! Happy Valentine's Day! 💖")
         return True, "Signup successful! Please log in."
     except sqlite3.IntegrityError:
         return False, "Email already registered."
@@ -126,6 +134,12 @@ def login_user(email, password):
     row = cur.fetchone()
     conn.close()
     if row and row[3] == hash_password(password):
+        # Show balloons and welcome if Valentine's Day
+        from datetime import datetime
+        today = datetime.now()
+        if today.month == 2 and today.day == 14:
+            st.balloons()
+            st.success("Welcome back! Happy Valentine's Day from SoulVest LoveBook! 💖")
         return {
             "id": row[0], "name": row[1], "email": row[2], "role": row[4], "usage_count": row[5],
             "story": row[6] or "", "couple_names": row[7] or "", "profile_photo": row[8]
@@ -159,76 +173,85 @@ def auth_ui():
 
     # App branding at the top
     st.markdown("""
-<div class='lovebook-branding'>
-    <span>💖 SoulVest LoveBook</span>
-</div>
-<style>
-    .lovebook-branding {
-        width: 100vw;
-        text-align: center;
-        margin-top: 12px;
-        margin-bottom: 0;
-        z-index: 10;
-    }
-    .lovebook-branding span {
-        display: inline-block;
-        font-family: Georgia,serif;
-        color: #b91372;
-        font-weight: bold;
-        font-size: 2.2rem;
-        letter-spacing: 0.5px;
-        background: #fff0f6cc;
-        border-radius: 18px;
-        padding: 0.2em 0.8em;
-        box-shadow: 0 2px 8px #b9137240;
-        border: 1.5px solid #b91372;
-    }
-    @media (max-width: 600px) {
-        .lovebook-branding span {
-            font-size: 1.3rem;
-            padding: 0.2em 0.5em;
-            border-radius: 12px;
+    <div class='lovebook-branding'>
+        <span>💖 SoulVest LoveBook</span>
+    </div>
+    <style>
+        .lovebook-branding {
+            width: 100vw;
+            text-align: center;
+            margin-top: 12px;
+            margin-bottom: 0;
+            z-index: 10;
         }
+        .lovebook-branding span {
+            display: inline-block;
+            font-family: Georgia,serif;
+            color: #b91372;
+            font-weight: bold;
+            font-size: 2.2rem;
+            letter-spacing: 0.5px;
+            background: #fff0f6cc;
+            border-radius: 18px;
+            padding: 0.2em 0.8em;
+            box-shadow: 0 2px 8px #b9137240;
+            border: 1.5px solid #b91372;
+            word-break: break-word;
+            max-width: 95vw;
+        }
+        @media (max-width: 900px) {
+            .lovebook-branding span {
+                font-size: 1.5rem;
+                padding: 0.2em 0.6em;
+                border-radius: 14px;
+            }
+        }
+        @media (max-width: 600px) {
+            .lovebook-branding span {
+                font-size: 1.1rem;
+                padding: 0.2em 0.3em;
+                border-radius: 10px;
+            }
+        }
+        /* Animated floating hearts background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            background: transparent;
+        }
+        .floating-heart {
+            position: fixed;
+            z-index: 1;
+            pointer-events: none;
+            font-size: 2.2rem;
+            animation: floatHeart 7s linear infinite;
+            opacity: 0.7;
+        }
+        @keyframes floatHeart {
+            0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
+            80% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
+        }
+    </style>
+    <script>
+    // Add floating hearts dynamically
+    if (!window.heartsAdded) {
+      window.heartsAdded = true;
+      for (let i = 0; i < 8; i++) {
+        let heart = document.createElement('div');
+        heart.className = 'floating-heart';
+        heart.innerHTML = '💖';
+        heart.style.left = (10 + Math.random() * 80) + 'vw';
+        heart.style.animationDelay = (Math.random() * 6) + 's';
+        heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
+        document.body.appendChild(heart);
+      }
     }
-    /* Animated floating hearts background */
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        pointer-events: none;
-        z-index: 0;
-        background: transparent;
-    }
-    .floating-heart {
-        position: fixed;
-        z-index: 1;
-        pointer-events: none;
-        font-size: 2.2rem;
-        animation: floatHeart 7s linear infinite;
-        opacity: 0.7;
-    }
-    @keyframes floatHeart {
-        0% { transform: translateY(100vh) scale(1) rotate(0deg); opacity: 0.7; }
-        80% { opacity: 0.8; }
-        100% { transform: translateY(-10vh) scale(1.2) rotate(30deg); opacity: 0; }
-    }
-</style>
-<script>
-// Add floating hearts dynamically
-if (!window.heartsAdded) {
-  window.heartsAdded = true;
-  for (let i = 0; i < 8; i++) {
-    let heart = document.createElement('div');
-    heart.className = 'floating-heart';
-    heart.innerHTML = '💖';
-    heart.style.left = (10 + Math.random() * 80) + 'vw';
-    heart.style.animationDelay = (Math.random() * 6) + 's';
-    heart.style.fontSize = (2 + Math.random() * 2) + 'rem';
-    document.body.appendChild(heart);
-  }
-}
-</script>
-""", unsafe_allow_html=True)
+    </script>
+    """, unsafe_allow_html=True)
 
     # Kiosk mode: always guest, no auth UI
     if KIOSK_MODE:
@@ -649,13 +672,14 @@ st.title("💖 SoulVest LoveBook")
 if not user:
     st.warning("Please log in, sign up, or continue as guest to use the app.")
     st.stop()
+# --- Valentine's Day Welcome Message ---
 st.markdown("""
 <div style='text-align:center;margin-top:24px;margin-bottom:8px;'>
-    <span style='font-size:32px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
-        Welcome to SoulVest LoveBook 💞
+    <span style='font-size:36px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
+        Happy Valentine's Day! 💘
     </span><br>
-    <span style='font-size:20px; color:#b91372; font-family:Georgia,serif;'>
-        Sometimes, the best way to share your heart is to write it down. Let your memories, laughter, and dreams come alive on these pages. Discover new things about each other, relive your favorite moments, and enjoy the journey together.
+    <span style='font-size:22px; color:#b91372; font-family:Georgia,serif;'>
+        Celebrate love, memories, and togetherness. Make this Valentine's Day unforgettable with your own digital memory book!
     </span>
 </div>
 <div class="heart-beat" style="margin: 0 auto 18px auto; display: flex; justify-content: center;">
@@ -664,6 +688,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a step closer together.</span>", unsafe_allow_html=True)
 st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love story unfold—one answer, one smile, one page at a time.</span>", unsafe_allow_html=True)
+
+# --- Valentine's Day Tips Section ---
+with st.expander("💡 Valentine's Day Tips: Plan the Perfect Day & Gift Ideas", expanded=True):
+    st.markdown("""
+**Plan a Memorable Valentine's Day:**
+
+- Start with a heartfelt breakfast in bed or a surprise morning note.
+- Plan a day of shared activities: a walk, a movie, a picnic, or a favorite hobby together.
+- Write a love letter or create a digital memory book together (right here!).
+- Cook a special meal or order from your favorite restaurant.
+- Set aside time for a meaningful conversation—share dreams, memories, or future plans.
+- End the day with a cozy movie night, stargazing, or a playlist of your favorite songs.
+
+**Gift Ideas:**
+- A personalized memory book (download your story as a PDF!)
+- A handwritten letter or poem
+- A custom playlist of your favorite songs
+- A framed photo or collage
+- A surprise video message from friends/family
+- A DIY gift: scrapbook, jar of love notes, or a handmade card
+- An experience: online class, virtual tour, or a future date voucher
+
+**Bonus:**
+- Try the Ho'oponopono practice: "I'm sorry. Please forgive me. Thank you. I love you." Say it, write it, or include it in your book for a healing, loving touch.
+    """)
 import random
 romantic_quotes = [
         ("Love is composed of a single soul inhabiting two bodies.", "Aristotle"),
@@ -717,10 +766,24 @@ with st.sidebar:
                 st.image(profile_photo_path, width=72)
             st.write(f"**{user.get('email')}**")
             st.caption("Welcome back!")
+            # Move LOGOUT button here
+            if st.button("🚪 Logout", key="logout_btn_sidebar", help="Logout"):
+                st.session_state.user = None
+                st.success("Logged out!")
+                st.rerun()
         else:
             st.write("**Guest**")
             st.caption("Welcome to LoveBook!")
     st.divider()
+    # --- Premium Upgrade Section ---
+    if user.get('role') == 'free':
+        st.markdown("---")
+        st.markdown("### ⭐️ Upgrade to Premium")
+        st.markdown("Unlock all question sets, unlimited books, and more!")
+        # Quick Razorpay Payment Link (no API needed)
+        payment_link = "https://rzp.io/i/yourpaymentlink"  # Replace with your real payment link
+        st.markdown(f"[<button style='background:#f37254;color:#fff;border:none;padding:12px 32px;border-radius:18px;font-size:1.1rem;cursor:pointer;'>Upgrade to Premium</button>]({payment_link})", unsafe_allow_html=True)
+        st.info("After payment, contact support or refresh to unlock premium features.")
     # --- Edit Profile Section ---
     st.subheader("Edit Profile")
     new_name = st.text_input("Name", value=user.get('name',''), key="edit_name")
@@ -744,7 +807,7 @@ with st.sidebar:
             st.session_state.user['profile_photo'] = photo_path
         st.success("Profile updated!")
     # QR code for homepage quick access
-    HOMEPAGE_URL = "https://lovebook.soulvest.app"  # Update to your homepage
+    HOMEPAGE_URL = "https://soulvest-lovebook.streamlit.app/"  # Updated homepage URL
     def generate_qr_code(url):
         qr = qrcode.QRCode(version=1, box_size=8, border=2)
         qr.add_data(url)
@@ -835,26 +898,6 @@ if st.session_state.get('show_dashboard'):
     st.session_state['show_dashboard'] = False
 
 # Top-right Logout button
-import streamlit as st_logout
-if user and user.get('email'):
-    st_logout.markdown("""
-    <div style='position:fixed;top:18px;right:32px;z-index:999;'>
-        <form action="#" method="post" style="display:inline;">
-            <button type="submit" style='background:#b91372;color:#fff;border:none;padding:8px 22px;border-radius:18px;font-size:1rem;cursor:pointer;' name="logout_btn">🚪 Logout</button>
-        </form>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-        <style>
-        .sidebar-logout-btn { position: fixed; left: 0; bottom: 0; width: 16em; padding: 1em 0 1.5em 2em; background: none; z-index: 100; }
-        </style>
-        <div class='sidebar-logout-btn'>
-    """, unsafe_allow_html=True)
-    if st.button("🚪 Logout", key="logout_btn_sidebar", help="Logout"):
-        st.session_state.user = None
-        st.success("Logged out!")
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
 tabs = st.tabs(tab_names)
 tab1 = tabs[0]
@@ -911,6 +954,7 @@ with tab1:
         ]
         for idx, (q, ph) in enumerate(quiz_questions):
             st.text_input(f"{idx+1}. {q}", placeholder=ph, key=f"quiz_{idx}")
+
 
     st.markdown("## Tell Us Your Story")
     uploaded_bg = st.file_uploader(
@@ -1003,10 +1047,11 @@ with tab1:
     # Only allow additional sets for paid users
     if user and user.get('role') == 'premium':
         question_set_names = list(question_sets.keys())
+        st.success("You are a premium user! All question sets unlocked.")
     else:
         question_set_names = ["Classic Love Story (Default)"]
         if user and user.get('role') == 'free':
-            st.info("Upgrade to premium to unlock more question sets!")
+            st.info("Upgrade to premium to unlock more question sets and unlimited books!")
     selected_set = st.selectbox("Select a theme:", question_set_names, key="question_set_selector")
     questions = question_sets[selected_set]
 
@@ -1048,28 +1093,33 @@ with tab1:
     # Generate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        if st.button("✨ Generate Our Memory Book", use_container_width=True):
-            required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
-            if not all(required_fields):
-                st.error("⚠️ Please fill in at least: Names and the first two questions.")
-            else:
-                with st.spinner("Creating your beautiful memory book... 📖"):
-                    # Build story from all answers
-                    story = f"""
+        # Limit free users to 1 book (or set a usage limit)
+        usage_limit = 1
+        if user and user.get('role') == 'free' and user.get('usage_count', 0) >= usage_limit:
+            st.warning("You have reached the free usage limit. Upgrade to premium for unlimited books and features!")
+        else:
+            if st.button("✨ Generate Our Memory Book", use_container_width=True):
+                required_fields = [person1_name, person2_name, answers.get('first_meeting',''), answers.get('smile_memory','')]
+                if not all(required_fields):
+                    st.error("⚠️ Please fill in at least: Names and the first two questions.")
+                else:
+                    with st.spinner("Creating your beautiful memory book... 📖"):
+                        # Build story from all answers
+                        story = f"""
 {person1_name} & {person2_name}'s Memory Book\n\n"""
-                    for idx, (q, ph, key, tip) in enumerate(questions):
-                        ans = answers.get(key, '').strip()
-                        if ans:
-                            story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
-                    st.session_state.story = story
-                    st.session_state.story_generated = True
-                    st.session_state.couple_names = f"{person1_name} & {person2_name}"
-                    # Save to DB for persistence only if not guest
-                    if user and user.get('role') != 'guest':
-                        save_user_progress(user['id'], story, st.session_state.couple_names)
-                    st.success("✨ Your memory book is ready!")
-                    st.balloons()
-                    st.info("Your story was crafted using your own beautiful memories and words. Go to the 'View Your Story' tab to see it and share the love!")
+                        for idx, (q, ph, key, tip) in enumerate(questions):
+                            ans = answers.get(key, '').strip()
+                            if ans:
+                                story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
+                        st.session_state.story = story
+                        st.session_state.story_generated = True
+                        st.session_state.couple_names = f"{person1_name} & {person2_name}"
+                        # Save to DB for persistence only if not guest
+                        if user and user.get('role') != 'guest':
+                            save_user_progress(user['id'], story, st.session_state.couple_names)
+                        st.success("✨ Your memory book is ready!")
+                        st.balloons()
+                        st.info("Your story was crafted using your own beautiful memories and words. Go to the 'View Your Story' tab to see it and share the love!")
 
         # --- Prompt guest to sign up after book ---
         if user and user.get('role') == 'guest' and st.session_state.story_generated:
