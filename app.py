@@ -158,7 +158,7 @@ st.markdown(f"""
 st.markdown("""
 <style>
     .block-container {
-        padding-top: 80px !important;
+        padding-top: 40px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -242,13 +242,9 @@ def render_branding_header():
     .lovebook-branding {
         width: 100vw;
         text-align: center;
-        margin-top: 0;
+        margin-top: 36px;
         margin-bottom: 0;
         z-index: 9999;
-        position: fixed;
-        top: 24px;
-        left: 0;
-        right: 0;
         background: transparent;
         pointer-events: none;
     }
@@ -281,7 +277,7 @@ def render_branding_header():
     }
     @media (max-width: 600px) {
         .lovebook-branding {
-            top: 12px;
+            margin-top: 18vw;
         }
         .lovebook-branding span {
             font-size: 1.25rem;
