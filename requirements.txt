@@ -6,4 +6,3 @@ edge-tts
 streamlit-webrtc
 speechrecognition
 av
-streamlit-logout
