@@ -242,11 +242,11 @@ def render_branding_header():
     .lovebook-branding {
         width: 100vw;
         text-align: center;
-        margin-top: 36px;
+        margin-top: 0;
         margin-bottom: 0;
         z-index: 9999;
         position: fixed;
-        top: 0;
+        top: 24px;
         left: 0;
         right: 0;
         background: transparent;
@@ -281,7 +281,7 @@ def render_branding_header():
     }
     @media (max-width: 600px) {
         .lovebook-branding {
-            margin-top: 18vw;
+            top: 12px;
         }
         .lovebook-branding span {
             font-size: 1.25rem;
