@@ -1153,11 +1153,11 @@ with tab1:
                         if ans:
                             story += f"Page {idx+1}: {q}\n\n{ans}\n\n"
                     st.session_state.story = story
-                        st.session_state.story_generated = True
-                        st.session_state.couple_names = f"{person1_name} & {person2_name}"
-                        # Save to DB for persistence only if not guest
-                        if user and user.get('role') != 'guest':
-                            save_user_progress(user['id'], story, st.session_state.couple_names)
+                    st.session_state.story_generated = True
+                    st.session_state.couple_names = f"{person1_name} & {person2_name}"
+                    # Save to DB for persistence only if not guest
+                    if user and user.get('role') != 'guest':
+                        save_user_progress(user['id'], story, st.session_state.couple_names)
                         st.success("✨ Your memory book is ready!")
                         st.balloons()
                         st.info("Your story was crafted using your own beautiful memories and words. Go to the 'View Your Story' tab to see it and share the love!")
