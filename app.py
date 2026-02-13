@@ -732,7 +732,16 @@ if not user:
     st.stop()
 # --- Valentine's Day Welcome Message ---
 st.markdown("""
-<div style='text-align:center;margin-top:24px;margin-bottom:8px;'>
+<div style='text-align:center;margin-top:24px;margin-bottom:0;'>
+    <span style='font-size:2.2rem; color:#b91372; font-family:Georgia,serif; font-weight:bold; background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%); border-radius: 18px; padding: 0.3em 1em; box-shadow: 0 2px 8px #b9137240; border: 2px solid #b91372; display:inline-block;'>
+        💖 SoulVest LoveBook
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Valentine's Day Welcome Message ---
+st.markdown("""
+<div style='text-align:center;margin-top:8px;margin-bottom:8px;'>
     <span style='font-size:36px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
         Happy Valentine's Day! 💘
     </span><br>
