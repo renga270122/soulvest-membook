@@ -1,4 +1,5 @@
 import hashlib
+import threading
 import qrcode
 import streamlit as st
 import sqlite3
@@ -59,6 +60,16 @@ def get_analytics():
     data = dict(cur.fetchall())
     conn.close()
     return data
+
+# --- Increment analytics for app hit (landing page) ---
+def track_app_hit():
+    try:
+        increment_analytics("hit")
+    except Exception as e:
+        print(f"Analytics error: {e}")
+
+# Run analytics increment in a background thread to avoid UI delay
+threading.Thread(target=track_app_hit, daemon=True).start()
 
 # Run migration at startup
 def migrate_add_name_column():
