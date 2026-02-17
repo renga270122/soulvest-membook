@@ -2,42 +2,7 @@ import hashlib
 import qrcode
 import streamlit as st
 import sqlite3
-import streamlit_webrtc as webrtc
-import av
-import queue
-import threading
-import speech_recognition as sr
-
-class AudioProcessor:
-    def __init__(self):
-        self.q = queue.Queue()
-        self.result = ""
-        self.lock = threading.Lock()
-        self.sr_samplerate = 16000  # default sample rate for speech_recognition
-        self.sr_samplewidth = 2     # 16-bit audio
-
-    def recv(self, frame):
-        # Convert frame to bytes for speech_recognition
-        audio = frame.to_ndarray()
-        # Convert to 16-bit PCM if needed
-        if audio.dtype != 'int16':
-            audio = (audio * 32767).astype('int16')
-        audio_bytes = audio.tobytes()
-        self.q.put(audio_bytes)
-        return frame
-
-    def recognize(self):
-        recognizer = sr.Recognizer()
-        while not self.q.empty():
-            audio_bytes = self.q.get()
-            try:
-                audio_data = sr.AudioData(audio_bytes, self.sr_samplerate, self.sr_samplewidth)
-                text = recognizer.recognize_google(audio_data)
-                with self.lock:
-                    self.result += text + " "
-            except Exception:
-                pass
-        return self.result
+# ...existing code...
 
 # --- Stub for update_user_profile (to avoid NameError) ---
 def update_user_profile(user_id, new_name, new_email, photo_path=None):
@@ -1082,37 +1047,7 @@ tab2 = tabs[1]
 dashboard_tab = tabs[2] if len(tabs) > 2 else None
 
 with tab1:
-
-    import streamlit_webrtc as webrtc
-    import av
-    import queue
-    import threading
-    import speech_recognition as sr
-
-    class AudioProcessor:
-        def __init__(self):
-            self.q = queue.Queue()
-            self.result = ""
-            self.lock = threading.Lock()
-
-        def recv(self, frame):
-            audio = frame.to_ndarray()
-            self.q.put(audio)
-            return frame
-
-        def recognize(self):
-            recognizer = sr.Recognizer()
-            while not self.q.empty():
-                audio = self.q.get()
-                try:
-                    with sr.AudioFile(audio) as source:
-                        audio_data = recognizer.record(source)
-                        text = recognizer.recognize_google(audio_data)
-                        with self.lock:
-                            self.result += text + " "
-                except Exception:
-                    pass
-            return self.result
+    # ...existing code...
 
     # Ho'oponopono-inspired final touch
     st.markdown("---")
@@ -1147,36 +1082,10 @@ with tab1:
     with col1:
         st.write("Your Name")
         person1_name = st.text_input("", key="p1", label_visibility="collapsed")
-        st.caption("Or use your microphone:")
-        audio_processor_name = AudioProcessor()
-        webrtc_streamer_name = webrtc.webrtc_streamer(
-            key="name_mic",
-            audio_processor_factory=lambda: audio_processor_name,
-            media_stream_constraints={"audio": True, "video": False},
-            async_processing=False,
-        )
-        if webrtc_streamer_name.state.playing:
-            st.info("Recording... Speak your name.")
-        if audio_processor_name.result:
-            st.session_state.p1 = audio_processor_name.result
-            person1_name = audio_processor_name.result
 
     with col2:
         st.write("Partner's Name")
         person2_name = st.text_input("", key="p2", label_visibility="collapsed")
-        st.caption("Or use your microphone:")
-        audio_processor_partner = AudioProcessor()
-        webrtc_streamer_partner = webrtc.webrtc_streamer(
-            key="partner_mic",
-            audio_processor_factory=lambda: audio_processor_partner,
-            media_stream_constraints={"audio": True, "video": False},
-            async_processing=False,
-        )
-        if webrtc_streamer_partner.state.playing:
-            st.info("Recording... Speak your partner's name.")
-        if audio_processor_partner.result:
-            st.session_state.p2 = audio_processor_partner.result
-            person2_name = audio_processor_partner.result
 
     # Universal question set for all couples
     universal_questions = [
@@ -1209,19 +1118,7 @@ with tab1:
             label_visibility="collapsed",
             help=" "
         )
-        st.caption("Or use your microphone:")
-        audio_processor_ans = AudioProcessor()
-        webrtc_streamer_ans = webrtc.webrtc_streamer(
-            key=f"ans_mic_{key}",
-            audio_processor_factory=lambda: audio_processor_ans,
-            media_stream_constraints={"audio": True, "video": False},
-            async_processing=False,
-        )
-        if webrtc_streamer_ans.state.playing:
-            st.info("Recording... Speak your answer.")
-        if audio_processor_ans.result:
-            st.session_state[f"ans_{key}"] = audio_processor_ans.result
-            answers[key] = audio_processor_ans.result
+        # ...existing code...
         # --- Autosave for signed-in users ---
         if user and user.get('role') not in (None, 'guest'):
             # Save partial progress (answers) as a draft story
@@ -1620,10 +1517,8 @@ if dashboard_tab:
 
 # Footer
 st.markdown("---")
-# --- Freemium Model Notice ---
+    # --- Freemium Model Notice ---
 if user:
-    if user['role'] == 'free' and user['usage_count'] > 1:
-        st.warning("You have reached the free usage limit. Upgrade to premium for unlimited books and features!")
     if user['role'] == 'guest':
         st.info("You are using the app as a guest. Your data will not be saved and you cannot resume or access a dashboard. Sign up or log in for full features!")
     st.markdown(
