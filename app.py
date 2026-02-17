@@ -217,14 +217,14 @@ def login_user(email, password):
     cur = conn.execute("SELECT id, name, email, password_hash, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
     row = cur.fetchone()
     conn.close()
-        if row and row[3] == hash_password(password):
-            increment_analytics("login")
-            # Show balloons and welcome if Valentine's Day
-            from datetime import datetime
-            today = datetime.now()
-            if today.month == 2 and today.day == 14:
-                st.balloons()
-                st.success("Welcome back! Celebrate your memories and love with SoulVest LoveBook! 💖")
+    if row and row[3] == hash_password(password):
+        increment_analytics("login")
+        # Show balloons and welcome if Valentine's Day
+        from datetime import datetime
+        today = datetime.now()
+        if today.month == 2 and today.day == 14:
+            st.balloons()
+            st.success("Welcome back! Celebrate your memories and love with SoulVest LoveBook! 💖")
         # Prompt for audience after login
         st.session_state.just_logged_in = True
         return {
@@ -755,31 +755,7 @@ else:
 if not user:
     st.warning("Please log in, sign up, or continue as guest to use the app.")
     st.stop()
-# --- Valentine's Day Welcome Message ---
-st.markdown("""
-<div style='text-align:center;margin-top:24px;margin-bottom:0;'>
-    <span style='font-size:2.2rem; color:#b91372; font-family:Georgia,serif; font-weight:bold; background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%); border-radius: 18px; padding: 0.3em 1em; box-shadow: 0 2px 8px #b9137240; border: 2px solid #b91372; display:inline-block;'>
-        💖 SoulVest LoveBook
-    </span>
-</div>
-""", unsafe_allow_html=True)
 
-# --- Valentine's Day Welcome Message ---
-st.markdown("""
-<div style='text-align:center;margin-top:8px;margin-bottom:8px;'>
-    <span style='font-size:36px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
-        Happy Valentine's Day! 💘
-    </span><br>
-    <span style='font-size:22px; color:#b91372; font-family:Georgia,serif;'>
-        Celebrate love, memories, and togetherness. Make this Valentine's Day unforgettable with your own digital memory book!
-    </span>
-</div>
-<div class="heart-beat" style="margin: 0 auto 18px auto; display: flex; justify-content: center;">
-  <div class="heart-shape"></div>
-</div>
-""", unsafe_allow_html=True)
-st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a step closer together.</span>", unsafe_allow_html=True)
-st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love story unfold—one answer, one smile, one page at a time.</span>", unsafe_allow_html=True)
 
 st.markdown("""
 <div style='text-align:center;margin-top:24px;margin-bottom:0;'>
@@ -807,24 +783,30 @@ st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let y
 
 # --- Love & Memory Book Tips Section ---
 with st.expander("💡 Tips: Make the Most of Your Memory Book", expanded=True):
-    st.markdown("**Plan a Memorable Day Together:**")
-    plan_ideas = [
-        "Start with a heartfelt note or message",
-        "Plan a day of shared activities: a walk, a movie, a picnic, or a favorite hobby together",
-        "Write a love letter or create a digital memory book together (right here!)",
-        "Cook a special meal or order from your favorite restaurant",
-        "End the day with a favorite movie, stargazing, or a walk down memory lane"
+    st.markdown("**Ways to Make Your Memory Book Special:**")
+    ideas = [
+        "Add a heartfelt note or message to start your book",
+        "Include photos, drawings, or mementos from important moments",
+        "Document shared experiences: trips, celebrations, or everyday joys",
+        "Write about lessons learned, favorite memories, or future dreams",
+        "Invite friends or family to contribute their own stories or wishes"
     ]
-    for idea in plan_ideas:
+    for idea in ideas:
         st.markdown(f"- {idea}")
-    st.markdown(":gift: **Gift Ideas:** Personalized photo book, handwritten letter, custom playlist, or a shared experience.")
+    st.markdown(":gift: **Creative Additions:** Personalized photo pages, inspirational quotes, playlists, or a timeline of milestones.")
+    st.markdown(":gift_heart: <span style='color:#b91372;'>Other ideas: a memory jar, a custom cover, themed pages, or a section for future goals and dreams.</span>", unsafe_allow_html=True)
+    st.markdown(":bulb: **More ways to personalize your book:**")
+    more_ideas = [
+        "Add a section for favorite recipes, songs, or books",
+        "Include a calendar of important dates and anniversaries",
+        "Create themed pages (travel, achievements, gratitude, etc.)",
+        "Add interactive prompts or questions for future entries",
+        "Leave space for new memories to be added over time"
     ]
-    st.markdown(":gift_heart: <span style='color:#b91372;'>Unique gift ideas to surprise your partner:</span>", unsafe_allow_html=True)
-    for idea in random.sample(gift_ideas, 5):
+    for idea in more_ideas:
         st.markdown(f"- {idea}")
-
     st.markdown("**Bonus:**")
-    st.markdown("Try the Ho'oponopono practice: 'I'm sorry. Please forgive me. Thank you. I love you.' Say it, write it, or include it in your book for a healing, loving touch.")
+    st.markdown("Try adding a gratitude section or a page for positive affirmations to make your book even more meaningful.")
 import random
 romantic_quotes = [
         ("Love is composed of a single soul inhabiting two bodies.", "Aristotle"),
@@ -871,13 +853,13 @@ with stats_col2:
     st.write("Total Words Written")
     st.write(f"**{total_words}**")
 
-# --- App Analytics (admin/demo only) ---
-if user and user.get('email') == 'soulvest1111@gmail.com':
-     st.markdown('---')
-     st.subheader('📈 App Analytics')
-     analytics = get_analytics()
-     st.write(f"Signups: {analytics.get('signup', 0)}")
-     st.write(f"Logins: {analytics.get('login', 0)}")
+if user and user.get('email') in ("srirenganathan.87@gmail.com", "soulvest1111@gmail.com"):
+    st.markdown('---')
+    st.subheader('📈 App Analytics')
+    analytics = get_analytics()
+    st.write(f"App Visits: {analytics.get('hit', 0)}")
+    st.write(f"Signups: {analytics.get('signup', 0)}")
+    st.write(f"Logins: {analytics.get('login', 0)}")
 
 import os
 with st.sidebar:
