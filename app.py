@@ -192,7 +192,7 @@ def signup_user(name, email, password):
         today = datetime.now()
         if today.month == 2 and today.day == 14:
             st.balloons()
-            st.success("Welcome to SoulVest LoveBook! Happy Valentine's Day! 💖")
+            st.success("Welcome to SoulVest LoveBook! Celebrate your memories and love! 💖")
         # Prompt for audience after signup
         st.session_state.just_signed_up = True
         return True, "Signup successful! Please log in."
@@ -206,14 +206,14 @@ def login_user(email, password):
     cur = conn.execute("SELECT id, name, email, password_hash, role, usage_count, story, couple_names, profile_photo FROM users WHERE email=?", (email,))
     row = cur.fetchone()
     conn.close()
-    if row and row[3] == hash_password(password):
-        increment_analytics("login")
-        # Show balloons and welcome if Valentine's Day
-        from datetime import datetime
-        today = datetime.now()
-        if today.month == 2 and today.day == 14:
-            st.balloons()
-            st.success("Welcome back! Happy Valentine's Day from SoulVest LoveBook! 💖")
+        if row and row[3] == hash_password(password):
+            increment_analytics("login")
+            # Show balloons and welcome if Valentine's Day
+            from datetime import datetime
+            today = datetime.now()
+            if today.month == 2 and today.day == 14:
+                st.balloons()
+                st.success("Welcome back! Celebrate your memories and love with SoulVest LoveBook! 💖")
         # Prompt for audience after login
         st.session_state.just_logged_in = True
         return {
@@ -605,7 +605,7 @@ bg_css = """
         border-left: 6px solid #ee9ca7;
         box-shadow: 0 2px 8px rgba(255, 182, 193, 0.10);
     }
-    /* Sidebar Valentine theme */
+    /* Sidebar theme */
     [data-testid="stSidebar"] > div:first-child {
         background: linear-gradient(135deg, #ffb6b9 0%, #fae3d9 100%);
         border-radius: 0 22px 22px 0;
@@ -770,46 +770,43 @@ st.markdown("""
 st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a step closer together.</span>", unsafe_allow_html=True)
 st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love story unfold—one answer, one smile, one page at a time.</span>", unsafe_allow_html=True)
 
-# --- Valentine's Day Tips Section ---
-with st.expander("💡 Valentine's Day Tips: Plan the Perfect Day & Gift Ideas", expanded=True):
-    st.markdown("**Plan a Memorable Valentine's Day:**")
+st.markdown("""
+<div style='text-align:center;margin-top:24px;margin-bottom:0;'>
+    <span style='font-size:2.2rem; color:#b91372; font-family:Georgia,serif; font-weight:bold; background: linear-gradient(90deg, #fff0f6cc 60%, #fae3d9cc 100%); border-radius: 18px; padding: 0.3em 1em; box-shadow: 0 2px 8px #b9137240; border: 2px solid #b91372; display:inline-block;'>
+        💖 SoulVest LoveBook
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div style='text-align:center;margin-top:8px;margin-bottom:8px;'>
+    <span style='font-size:36px; color:#ee9ca7; font-family:Georgia,serif; font-weight:bold;'>
+        Welcome! 💘
+    </span><br>
+    <span style='font-size:22px; color:#b91372; font-family:Georgia,serif;'>
+        Celebrate love, memories, and togetherness. Make every day unforgettable with your own digital memory book!
+    </span>
+</div>
+<div class="heart-beat" style="margin: 0 auto 18px auto; display: flex; justify-content: center;">
+  <div class="heart-shape"></div>
+</div>
+""", unsafe_allow_html=True)
+st.markdown("<span style='font-size:26px;color:#b91372;font-family:Georgia,serif;'>Every heartbeat, a memory. Every memory, a step closer together.</span>", unsafe_allow_html=True)
+st.markdown(":sparkling_heart: <span style='font-size:20px;color:#b91372;'>Let your love story unfold—one answer, one smile, one page at a time.</span>", unsafe_allow_html=True)
+
+# --- Love & Memory Book Tips Section ---
+with st.expander("💡 Tips: Make the Most of Your Memory Book", expanded=True):
+    st.markdown("**Plan a Memorable Day Together:**")
     plan_ideas = [
-        "Start with a heartfelt breakfast in bed or a surprise morning note",
+        "Start with a heartfelt note or message",
         "Plan a day of shared activities: a walk, a movie, a picnic, or a favorite hobby together",
         "Write a love letter or create a digital memory book together (right here!)",
         "Cook a special meal or order from your favorite restaurant",
-        "Set aside time for a meaningful conversation—share dreams, memories, or future plans",
-        "End the day with a cozy movie night, stargazing, or a playlist of your favorite songs",
-        "Create a couple's vision board for your future together",
-        "Do a TikTok or Instagram challenge together and share your fun side",
-        "Recreate your first date at home or outdoors",
-        "Try a new hobby together: pottery, painting, or dancing (even via YouTube)",
-        "Host a virtual double date with friends or family",
-        "Make a time capsule with notes and mementos to open next year",
-        "Go on a spontaneous mini road trip or city adventure"
+        "End the day with a favorite movie, stargazing, or a walk down memory lane"
     ]
-    import random
-    st.markdown(":star2: <span style='color:#b91372;'>Here are some creative ideas for your day:</span>", unsafe_allow_html=True)
-    for idea in random.sample(plan_ideas, 5):
+    for idea in plan_ideas:
         st.markdown(f"- {idea}")
-
-    st.markdown("**Gift Ideas:**")
-    gift_ideas = [
-        "A personalized memory book (download your story as a PDF!)",
-        "A handwritten letter or poem",
-        "A custom playlist of your favorite songs",
-        "A framed photo or collage",
-        "A surprise video message from friends/family",
-        "A DIY gift: scrapbook, jar of love notes, or a handmade card",
-        "An experience: online class, virtual tour, or a future date voucher",
-        "A star map of the night you met",
-        "A custom couple's illustration or caricature",
-        "A personalized puzzle with your photo",
-        "A subscription box (wine, books, games, or snacks)",
-        "A QR code that links to a secret love message or video",
-        "A plant or bonsai to grow together as a symbol of your relationship",
-        "A couple's game night kit (board games, card games, or trivia)",
-        "A surprise scavenger hunt with clues around your home or city"
+    st.markdown(":gift: **Gift Ideas:** Personalized photo book, handwritten letter, custom playlist, or a shared experience.")
     ]
     st.markdown(":gift_heart: <span style='color:#b91372;'>Unique gift ideas to surprise your partner:</span>", unsafe_allow_html=True)
     for idea in random.sample(gift_ideas, 5):
@@ -963,7 +960,7 @@ with st.sidebar:
     - Rediscovering each other
     - Sharing a laugh or a memory
     - Celebrating your unique bond
-    - Valentine's Day, anniversaries, or any day you want to connect ❤️
+    - Anniversaries, special occasions, or any day you want to connect ❤️
     """, unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("### 💡 Pro Love & Relationship Tips")
@@ -1476,7 +1473,7 @@ if dashboard_tab:
 
         # --- Viral Share Section ---
         st.markdown("### 💝 Share Your Love Story with the World")
-        st.markdown("<span style='color:#b91372;'>Let your love inspire others—share your story on WhatsApp, Facebook, or Instagram! Make this Valentine's Day unforgettable for you and your beloved.</span>", unsafe_allow_html=True)
+        st.markdown("<span style='color:#b91372;'>Let your love inspire others—share your story on WhatsApp, Facebook, or Instagram! Make every day special for you and your beloved.</span>", unsafe_allow_html=True)
         whatsapp_text = f"Our Love Story - {st.session_state.couple_names} - Made with SoulVest Memory Book. Create yours at https://soulvest.ai"
         whatsapp_url = f"https://wa.me/?text={whatsapp_text}"
         facebook_url = f"https://www.facebook.com/sharer/sharer.php?u=https://soulvest.ai&quote=Our%20Love%20Story%20by%20SoulVest%20Memory%20Book%3A%20{st.session_state.couple_names}%20-%20Made%20with%20SoulVest%20Memory%20Book.%20Create%20yours%20at%20https://soulvest.ai"
